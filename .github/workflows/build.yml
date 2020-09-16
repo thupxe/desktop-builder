@@ -10,7 +10,7 @@ jobs:
       SUIT: "bionic"
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     
     steps:
       -
@@ -52,6 +52,7 @@ jobs:
         name: Debootstrap
         run: |
           sudo mkdir -p rootfs/
+          mkdir -p /tmp/.debuildcache/
           sudo debootstrap \
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
