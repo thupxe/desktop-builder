@@ -1,0 +1,59 @@
+name: build-desktop
+
+on:
+  push:
+
+jobs:
+  build:
+    env:
+      BUILD_MIRROR: "http://archive.ubuntu.com/ubuntu"
+      SUIT: "bionic"
+      USERNAME: "user"
+      PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
+    runs-on: ubuntu-latest
+    
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Cache Deb Packages
+        uses: actions/cache@v2
+        if: github.event_name == 'push'
+        with:
+          path: /tmp/.debuildcache
+          key: ${{ runner.os }}-debs-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-debs-
+      -
+        name: Cache Deb Packages
+        uses: actions/cache@v2
+        if: github.event_name == 'pull_request'
+        with:
+          path: /tmp/.debuildcache
+          key: ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-debs-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-debs-
+            ${{ runner.os }}-debs-
+      -
+        name: Cache Deb Packages
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
+        run: |
+          echo "I do not know how to setup cache"
+          exit -1
+      -
+        name: Prepare build environment
+        run: |
+          apt-get update
+          apt-get install -y debootstrap
+          
+      - 
+        name: Debootstrap
+        run: |
+          mkdir -p rootfs/
+          debootstrap \
+            --cache-dir=/tmp/.debuildcache \
+            --merged-usr --arch=amd64 \
+            --components=main,universe,non-free \
+            --include="$(sed -r 's/^[ \t]+//; s/[ \t]+$//; /^#/d;' packages.list | tr '\n' ',' | sed -r 's/,+/,/g; s/,$//')" \
+            "$SUIT" rootfs/ "$BUILD_MIRROR"
