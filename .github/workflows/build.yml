@@ -35,6 +35,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-debs-
             ${{ runner.os }}-debs-
+      - name: Find out current mirror in the build environment
+        continue-on-error: true
+        run: | 
+          if [ "$(lsb_release -i -s )" != "Ubuntu" ]; then
+            exit 0;
+          fi
+          cat /etc/apt/sources.list | grep "^deb" |
+            grep "$(lsb_release -c -s)"  | awk '{print $2}' | sed 's@/$@@' |
+            while read url; do
+              if curl --head -sfL "${url}/dists/${SUIT}/InRelease" > /dev/null; then
+                echo "Found current mirror: ${url}" >&2
+                echo "::set-env name=BUILD_MIRROR::${url}"
+                break;
+              fi
+            done
+          exit 0;
       -
         name: Cache Deb Packages
         if: github.event_name != 'push' && github.event_name != 'pull_request'
