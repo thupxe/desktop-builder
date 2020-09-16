@@ -44,14 +44,14 @@ jobs:
       -
         name: Prepare build environment
         run: |
-          apt-get update
-          apt-get install -y debootstrap
+          sudo apt-get update
+          sudo apt-get install -y debootstrap
           
       - 
         name: Debootstrap
         run: |
-          mkdir -p rootfs/
-          debootstrap \
+          sudo mkdir -p rootfs/
+          sudo debootstrap \
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
             --components=main,universe,non-free \
