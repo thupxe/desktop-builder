@@ -75,3 +75,57 @@ jobs:
             --components=main,universe,non-free \
             --include="$(sed -r 's/^[ \t]+//; s/[ \t]+$//; /^#/d;' packages.list | tr '\n' ',' | sed -r 's/,+/,/g; s/,$//')" \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
+      - 
+        name: Bind mount proc, sys
+        run: |
+          for i in sys proc; do
+            sudo mount --bind /$i rootfs/$i
+          done
+      - name: Prepare to configure
+        run: |
+          cat > /tmp/func << 'EOF'
+          export LANG=C
+          in-root(){
+            sudo chroot rootfs "$@"
+          }
+          EOF
+      - 
+        name: Post install configuration
+        run: |
+          . /tmp/func
+          in-root debconf-set-selections <<EOF
+          locales	locales/locales_to_be_generated	multiselect	en_US.UTF-8 UTF-8, zh_CN.UTF-8 UTF-8
+          locales	locales/default_environment_locale	select	en_US.UTF-8
+          tzdata	tzdata/Areas	select	Asia
+          tzdata	tzdata/Zones/Asia	select	Shanghai
+          EOF
+          in-root rm -f "/etc/locale.gen"
+          in-root ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime 
+          in-root dpkg-reconfigure --frontend noninteractive locales < /dev/null
+          in-root dpkg-reconfigure --frontend noninteractive tzdata < /dev/null
+          sudo tee rootfs/etc/apt/sources.list << EOF
+          deb ${BUILD_MIRROR} ${SUIT} main restricted
+          deb ${BUILD_MIRROR} ${SUIT}-updates main restricted
+
+          deb ${BUILD_MIRROR} ${SUIT} universe
+          deb ${BUILD_MIRROR} ${SUIT}-updates universe
+
+          deb ${BUILD_MIRROR} ${SUIT} multiverse
+          deb ${BUILD_MIRROR} ${SUIT}-updates multiverse
+
+          deb ${BUILD_MIRROR} ${SUIT}-backports main restricted universe multiverse
+          EOF
+      -
+        name: Install additional softwares
+        run: |
+          . /tmp/func
+          curl -fsL "https://download.sublimetext.com/sublimehq-pub.gpg" | in-root apt-key add -
+          curl -fsL "https://packages.microsoft.com/keys/microsoft.asc" | in-root apt-key add -
+          echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee rootfs/etc/apt/sources.list.d/sublime-text.list
+          echo "deb https://packages.microsoft.com/repos/vscode stable main" | sudo tee rootfs/etc/apt/sources.list.d/vscode.list
+          in-root apt-get update
+          in-root apt-get -y dist-upgrade
+          in-root apt-get purge -y network-manager netplan.io snap snapd apport
+          in-root systemctl mask systemd-networkd
+          in-root apt-get install -y code sublime-text
+           
