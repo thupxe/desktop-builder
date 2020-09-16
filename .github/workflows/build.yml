@@ -44,8 +44,9 @@ jobs:
       -
         name: Prepare build environment
         run: |
+          echo "deb ${BUILD_MIRROR} focal main restricted" | sudo tee /etc/apt/sources.list.d/focal.list
           sudo apt-get update
-          sudo apt-get install -y debootstrap
+          sudo apt-get install -t focal -y debootstrap
           
       - 
         name: Debootstrap
