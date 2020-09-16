@@ -35,6 +35,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-debs-
             ${{ runner.os }}-debs-
+      -
+        name: Cache Deb Packages
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
+        run: |
+          echo "I do not know how to setup cache"
+          exit -1
+
+      - name: Build Canonical Package List
+        run: |
+          echo "Ubuntu_${SUIT}" > current_suit.txt
+          sed -r 's/^[ \t]+//; s/[ \t]+$//; /^#/d;' packages.list | sort | uniq > packages_can.list
+
+      - name: Cache Debootstrap Result
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.debuildtar
+          key: ${{ runner.os }}-debtar-${{ hashFiles('packages_can.list', 'current_suit.txt') }}
+
       - name: Find out current mirror in the build environment
         continue-on-error: true
         run: | 
@@ -51,12 +69,7 @@ jobs:
               fi
             done
           exit 0;
-      -
-        name: Cache Deb Packages
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: |
-          echo "I do not know how to setup cache"
-          exit -1
+
       -
         name: Prepare build environment
         run: |
@@ -69,12 +82,22 @@ jobs:
         run: |
           sudo mkdir -p rootfs/
           mkdir -p /tmp/.debuildcache/
+          mkdir -p /tmp/.debuildtar/
+          if [ -f /tmp/.debuildtar/rootfs.tar ]; then
+            if sudo tar -C rootfs/ -xf /tmp/.debuildtar/rootfs.tar; then
+              exit 0
+            else
+              sudo rm -rf rootfs/
+              sudo mkdir -p rootfs/
+            fi
+          fi
           sudo debootstrap \
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
             --components=main,universe,non-free \
-            --include="$(sed -r 's/^[ \t]+//; s/[ \t]+$//; /^#/d;' packages.list | tr '\n' ',' | sed -r 's/,+/,/g; s/,$//')" \
+            --include="$(cat packages_can.list | tr '\n' ',' | sed -r 's/,+/,/g; s/,$//')" \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
+          sudo tar -C rootfs/ --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
       - 
         name: Bind mount proc, sys
         run: |
