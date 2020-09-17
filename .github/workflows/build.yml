@@ -76,6 +76,9 @@ jobs:
           echo "deb ${BUILD_MIRROR} focal main restricted" | sudo tee /etc/apt/sources.list.d/focal.list
           sudo apt-get update
           sudo apt-get install -t focal -y debootstrap
+          sudo rm /etc/apt/sources.list.d/focal.list
+          sudo apt-get update
+          sudo apt-get install libxml2-utils
           
       - 
         name: Debootstrap
@@ -153,10 +156,34 @@ jobs:
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y dist-upgrade
           in-root systemctl mask systemd-networkd
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y install code sublime-text
-          sudo umount rootfs/.debuildcache rootfs/sys rootfs/proc
-          sudo rmdir rootfs/.debuildcache
-          sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock
+          
       -
         name: Make cache for built system
         run: |
+          sudo umount rootfs/.debuildcache rootfs/sys rootfs/proc
+          sudo rmdir rootfs/.debuildcache
+          sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock 
           sudo tar -C rootfs/ --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
+          for i in sys proc; do
+            sudo mount --bind /$i rootfs/$i
+          done
+      - 
+        name: Install the latest Eclipse
+        run: |
+          version="$(curl -sfL https://download.eclipse.org/technology/epp/downloads/release/release.xml |
+                       xmllint --xpath "/packages/present[1]/text()" -)"
+          echo "Found Eclipse version: ${version}"
+          curl -fsL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/${version}/eclipse-java-$(echo "$version" | tr '/' '-')-linux-gtk-x86_64.tar.gz&r=1" | sudo tar -C rootfs/opt -xz
+          sudo tee rootfs/usr/share/applications/eclipse.desktop << EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Eclipse
+          Comment=Eclipse Integrated Development Environment
+          Icon=/opt/eclipse/icon.xpm
+          Exec=/opt/eclipse/eclipse
+          Terminal=false
+          Categories=Development;IDE;Java;
+          EOF
+          sudo chmod 644 rootfs/usr/share/applications/eclipse.desktop
+          
+
