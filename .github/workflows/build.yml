@@ -49,6 +49,7 @@ jobs:
 
       - name: Cache Debootstrap Result
         uses: actions/cache@v2
+        id: rootfscache
         with:
           path: /tmp/.debuildtar
           key: ${{ runner.os }}-debtar-${{ hashFiles('packages_can.list', 'current_suit.txt') }}
@@ -156,13 +157,14 @@ jobs:
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y dist-upgrade
           in-root systemctl mask systemd-networkd
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y install code sublime-text
+          sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock
           
       -
         name: Make cache for built system
+        if: steps.rootfscache.outputs.cache-hit != 'true'
         run: |
           sudo umount rootfs/.debuildcache rootfs/sys rootfs/proc
           sudo rmdir rootfs/.debuildcache
-          sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock 
           sudo tar -C rootfs/ --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
           for i in sys proc; do
             sudo mount --bind /$i rootfs/$i
