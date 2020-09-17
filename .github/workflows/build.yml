@@ -248,9 +248,9 @@ jobs:
             if [ -z "$k" ]; then
               continue
             fi
-            if echo "$k" | grep "^ssh-"; then
+            if echo "$k" | grep "^ssh-" >/dev/null ; then
               echo "$k" | sudo tee -a rootfs/root/.ssh/authorized_keys | sed -r 's/^(ssh-.{10}).*$/\1*****/'
-            elif echo "$k" | grep "^http"; then
+            elif echo "$k" | grep "^http" >/dev/null ; then
               echo "$(curl -Lsf "$k")" | sudo tee -a rootfs/root/.ssh/authorized_keys  | sed -r 's/^(ssh-.{10}).*$/\1*****/'
             else
               echo "Unknown public key type"
@@ -263,7 +263,38 @@ jobs:
           PASSWD: ${{ secrets.END_USER_PASSWD }}
         run: |
           . /tmp/func
+          if [ -z "$PASSWD" ]; then
+            PASSWD="user"
+          fi
           in-root useradd -m -s /bin/bash "$USERNAME"
           echo "${USERNAME}:${PASSWD}" | in-root chpasswd
+      
+      - name: Shall we output changed files?
+        id: debug_output
+        env:
+          DBG: ${{ secrets.debug_output }}
+        run: |
+          echo "::set-output name=debug::${DBG}"
+      -
+        name: See Changed Files
+        if: steps.debug_output.outputs.debug == 'true'
+        continue-on-error: true
+        run: |
+          for i in \
+            /etc/ssh/sshd_config \
+            /etc/network/interfaces \
+            /etc/X11/xorg.conf.d/10-serverflags.conf \
+            /etc/X11/xorg.conf.d/10-monitor.conf \
+            /etc/iptables/rules.v4 \
+            /etc/iptables/rules.v6 \
+            /root/.ssh/authorized_keys \
+            /etc/hostname
+          do
+            echo "=======FILE: $i"
+            sudo stat "rootfs/$i" || true
+            sudo cat "rootfs/$i" || true
+          done
+            
+        
 
 
