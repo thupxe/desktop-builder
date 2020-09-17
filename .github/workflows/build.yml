@@ -79,7 +79,7 @@ jobs:
           sudo apt-get install -t focal -y debootstrap
           sudo rm /etc/apt/sources.list.d/focal.list
           sudo apt-get update
-          sudo apt-get install libxml2-utils
+          sudo apt-get install libxml2-utils jq
           
       - 
         name: Debootstrap
@@ -113,6 +113,9 @@ jobs:
           export LANG=C
           in-root(){
             sudo chroot rootfs "$@"
+          }
+          as-user(){
+            sudo chroot rootfs sudo -H -u "$USERNAME" "$@"
           }
           EOF
       - 
@@ -299,4 +302,110 @@ jobs:
             
         
 
+      -
+        name: Configure dictionary
+        run: |
+          sudo mkdir -p rootfs/usr/local/share/goldendict
+          sudo ln -sf /usr/share/goldendict-wordnet rootfs/usr/local/share/goldendict/goldendict-wordnet
+          curl -Lsf "http://download.huzheng.org/zh_CN/stardict-oxford-gb-formated-2.4.2.tar.bz2" | sudo tar -C rootfs/usr/local/share/goldendict/ -xvj
+      
+      -
+        name: Install vscode extensions 
+        run: |
+          . /tmp/func
+          download_release(){
+            local repo_name="$1"
+            local asset_name="$2"
+            local output_name="$3"
+            
+            local down_url="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.assets[] | select (.name == "'"$asset_name"'") | [.][0].browser_download_url')"
+            echo "Downloading $down_url"
+            curl -sfL "$down_url" > "$output_name"
+          }
+          download_release "microsoft/vscode-cpptools" "cpptools-linux.vsix" "cpptools-linux.vsix"
+          download_release "microsoft/vscode-python" "ms-python-release.vsix" "ms-python-release.vsix"
+          for i in *.vsix; do
+            sudo mv "$i" rootfs/
+            as-user code --install-extension "/$i"
+            sudo rm -f "$i"
+          done
+        
+      -
+        name: Setup User settings
+        run: |
+          . /tmp/func
+          as-user-mkdir(){
+            dir="$1"
+            as-user mkdir -p "/home/$USERNAME/$dir"
+          }
+          as-user-put(){
+            file="$1"
+            as-user-mkdir "$(dirname "$file")"
+            as-user tee "/home/$USERNAME/$file" > /dev/null
+          }
+          as-user-mkdir "Desktop"
+          for i in \
+            code.desktop \
+            emacs25.desktop \
+            firefox.desktop \
+            gedit.desktop \
+            gnome-language-selector.desktop \
+            gnome-terminal.desktop \
+            gvim.desktop \
+            org.gnome.Calculator.desktop \
+            sublime_text.desktop \
+            eclipse.desktop \
+            goldendict.desktop
+          do 
+            as-user cp "/usr/share/applications/$i" "/home/$USERNAME/Desktop/$i"
+            as-user chmod +x "/home/$USERNAME/Desktop/$i"
+          done
+          as-user sed -i '/^OnlyShowIn/D' "/home/$USERNAME/Desktop/gnome-terminal.desktop"
+          
+          as-user-put ".config/fcitx/profile" << EOF
+          [Profile]
+          IMName=sunpinyin
+          EnabledIMList=fcitx-keyboard-us:True,sunpinyin:True,pinyin:True,shuangpin:True,wubi:True
+          EOF
+          
+          as-user-put ".config/xfce4/helpers.rc" << EOF
+          TerminalEmulator=gnome-terminal
+          
+          EOF
+          
+          as-user-put ".config/.xinputrc" << EOF
+          run_im fcitx
+          EOF
+          
+          as-user-put ".config/Code/User/settings.json" << EOF
+          {
+                "editor.fontFamily": "'Fira Code', 'Ubuntu Mono', Consolas, 'Courier New', monospace",
+                "editor.fontLigatures": false
+          }
+          EOF
+          
+          as-user-put ".goldendict/config" << EOF
+          <config>
+           <paths>
+            <path recursive="1">/usr/local/share/goldendict</path>
+           </paths>
+          </config>
+          EOF
+          
+          as-user-put ".config/mimeapps.list" << EOF
+          [Default Applications]
+          application/pdf=firefox.desktop
 
+          [Added Associations]
+          application/pdf=firefox.desktop;
+          EOF
+          
+          as-user-put "Desktop/cppref.desktop" << EOF
+          [Desktop Entry]
+          Version=1.0
+          Encoding=UTF-8
+          Name=CPP Reference
+          Type=Link
+          URL=file:///usr/share/cppreference/doc/html/en/index.html
+          EOF
+          as-user chmod +x "/home/$USERNAME/Desktop/cppref.desktop"
