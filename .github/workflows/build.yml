@@ -449,8 +449,7 @@ jobs:
           tar -f dist/images.tar --append --numeric-owner --owner root --group root -C images/ version
           tar -tvf dist/images.tar
           sudo rm -rf images/
-          gzip --no-name  < dist/images.tar | split --suffix-length=2 --bytes=700M --numeric-suffixes - dist/images.tar.gz-
-          rm dist/images.tar
+          gzip --no-name dist/images.tar 
           sudo tar -f dist/kernel.tar.gz --create --gzip --numeric-owner -C rootfs/ boot/ lib/modules/
       - 
         name: Upload Aritfacts
