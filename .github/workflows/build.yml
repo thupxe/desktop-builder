@@ -248,7 +248,8 @@ jobs:
           sudo mkdir -p rootfs/root/.ssh
           sudo rm -f rootfs/root/.ssh/authorized_keys
           sudo touch rootfs/root/.ssh/authorized_keys
-          sudo chmod -R 644 rootfs/root/.ssh
+          sudo chmod 755 rootfs/root/.ssh
+          sudo chmod 644 rootfs/root/.ssh/authorized_keys
           echo "$KEYS" | while read k; do
             if [ -z "$k" ]; then
               continue
@@ -327,7 +328,7 @@ jobs:
           for i in *.vsix; do
             sudo mv "$i" rootfs/
             as-user code --install-extension "/$i"
-            sudo rm -f "$i"
+            sudo rm -f "rootfs/$i"
           done
         
       -
@@ -417,7 +418,7 @@ jobs:
           sudo umount rootfs/proc rootfs/sys rootfs/.debuildcache
           sudo rmdir rootfs/.debuildcache
           mkdir -p images/ dist/
-          sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e /boot
+          sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
           tar -f dist/images.tar --create --numeric-owner --owner root --group root -C images/ --exclude=version .
