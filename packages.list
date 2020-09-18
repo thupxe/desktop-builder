@@ -21,7 +21,7 @@ gnupg
 ifupdown
 fcitx-table
 fcitx-table-wubi
-fcitx-ui-qimpanel
+fcitx-ui-classic
 firefox-locale-zh-hans
 chromium-browser
 chromium-browser-l10n
@@ -33,6 +33,7 @@ libqt4-xmlpatterns
 libqt5quickwidgets5
 qml-module-qtquick2
 language-pack-zh-hans-base
+language-pack-gnome-zh-hans
 fcitx-pinyin
 fcitx-sunpinyin
 fcitx-module-cloudpinyin

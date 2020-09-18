@@ -130,6 +130,8 @@ jobs:
           EOF
           in-root rm -f "/etc/locale.gen"
           in-root ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime 
+          sudo mkdir -p rootfs/var/lib/locales/supported.d/
+          echo "zh_CN.UTF-8 UTF-8" | sudo tee rootfs/var/lib/locales/supported.d/zh-hans  > /dev/null
           in-root dpkg-reconfigure --frontend noninteractive locales < /dev/null
           in-root dpkg-reconfigure --frontend noninteractive tzdata < /dev/null
           sudo tee rootfs/etc/apt/sources.list << EOF
@@ -227,6 +229,7 @@ jobs:
               echo "-A OUTPUT -d ${ip} -j ACCEPT" | sudo tee -a rootfs/etc/iptables/rules.v4 | sed -r 's/-d +[^ ]* /-d *** /'
             fi
           done
+          echo "COMMIT" | sudo tee -a rootfs/etc/iptables/rules.v4
           
           sudo tee rootfs/etc/iptables/rules.v6 << EOF
           *filter
@@ -373,7 +376,8 @@ jobs:
             org.gnome.Calculator.desktop \
             sublime_text.desktop \
             eclipse.desktop \
-            goldendict.desktop
+            goldendict.desktop \
+            chromium-browser.desktop
           do 
             as-user cp "/usr/share/applications/$i" "/home/$USERNAME/Desktop/$i"
             as-user chmod +x "/home/$USERNAME/Desktop/$i"
@@ -391,7 +395,7 @@ jobs:
           
           EOF
           
-          as-user-put ".config/.xinputrc" << EOF
+          as-user-put ".xinputrc" << EOF
           run_im fcitx
           EOF
           
@@ -425,6 +429,7 @@ jobs:
           Name=CPP Reference
           Type=Link
           URL=file:///usr/share/cppreference/doc/html/en/index.html
+          Icon=help-contents
           EOF
           as-user chmod +x "/home/$USERNAME/Desktop/cppref.desktop"
       -
@@ -432,8 +437,10 @@ jobs:
         run: |
           . /tmp/func
           in-root apt-get clean
-          sudo umount rootfs/proc rootfs/sys rootfs/.debuildcache
-          sudo rmdir rootfs/.debuildcache
+          in-root apt-get check
+          sudo umount rootfs/proc rootfs/sys
+          sudo umount rootfs/.debuildcache || true
+          sudo rmdir rootfs/.debuildcache || true
           mkdir -p images/ dist/
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
           echo "$GITHUB_SHA" > images/version
