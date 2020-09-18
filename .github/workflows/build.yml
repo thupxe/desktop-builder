@@ -264,6 +264,23 @@ jobs:
             fi
           done
       -
+        name: Restore mirror configuration
+        run: |
+          sudo tee rootfs/etc/apt/sources.list << EOF
+          deb ${PRODUCT_MIRROR} ${SUIT} main restricted
+          deb ${PRODUCT_MIRROR} ${SUIT}-updates main restricted
+
+          deb ${PRODUCT_MIRROR} ${SUIT} universe
+          deb ${PRODUCT_MIRROR} ${SUIT}-updates universe
+
+          deb ${PRODUCT_MIRROR} ${SUIT} multiverse
+          deb ${PRODUCT_MIRROR} ${SUIT}-updates multiverse
+
+          deb ${PRODUCT_MIRROR} ${SUIT}-backports main restricted universe multiverse
+          EOF
+          . /tmp/func
+          in-root apt-get update
+      -
         name: Create end user
         env:
           PASSWD: ${{ secrets.END_USER_PASSWD }}
