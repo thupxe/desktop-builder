@@ -99,6 +99,7 @@ jobs:
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
             --components=main,universe,non-free \
+            --exclude=ubuntu-minimal,nplan,netplan.io,isc-dhcp-client,isc-dhcp-common \
             --include=gnupg \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
       - 

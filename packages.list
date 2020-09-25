@@ -19,6 +19,8 @@ openssh-server
 apt-transport-https
 gnupg
 ifupdown
+dhcpcd5
+resolvconf
 fcitx-table
 fcitx-table-wubi
 fcitx-ui-classic
