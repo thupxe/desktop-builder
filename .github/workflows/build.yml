@@ -213,6 +213,9 @@ jobs:
           EndSection
           EOF
           sudo rm -f rootfs/etc/hostname
+          . /tmp/func
+          in-root systemctl disable dhcpcd
+          in-root systemctl mask dhcpcd
       -
         name: Generate Access List
         env: 
