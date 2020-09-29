@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+
+case $1 in
+prereqs)
+	echo ""
+	exit 0
+	;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+manual_add_modules overlay squashfs 9p 9pnet_virtio loop sqlzma unlzma
+auto_add_modules net
+copy_exec /usr/bin/curl /bin
+copy_exec /usr/bin/udp-receiver /bin
+copy_exec /usr/bin/rsync /bin
+copy_exec /usr/bin/numfmt /bin
+copy_exec /sbin/mke2fs
+copy_exec /sbin/mkfs.ext4
+copy_exec /sbin/losetup

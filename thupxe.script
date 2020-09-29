@@ -1,0 +1,299 @@
+# Assemble thupxe rootfs			-*- shell-script -*-
+
+thupxe_args() {
+	thupxeroot="PARTLABEL=thupxeroot"
+	thupxeapi_serv=""
+	thupxeoff="0:0:0"
+	thupxedev=""
+	thupxepart=""
+	thupxeuuid=""
+	
+	for x in $(cat /proc/cmdline); do
+		case $x in
+		thupxeroot=*)
+			thupxeroot=${x#thupxeroot=}
+			;;
+		thupxeapi=*)
+			thupxeapi_serv=${x#thupxeapi=}
+			;;
+		thupxeoff=*)
+			thupxeoff=${x#thupxeoff=}
+			;;
+		esac
+	done
+}
+
+# panic () {
+# 	if [ -n "$thupxeapi_serv" ]; then
+# 		api_call "record_failure?mac=${mac_addr}&msg=$*"
+# 	fi
+# 	echo "Boot Failure: $@"
+# 	read -t 30 -p "Press Enter to a Rescue Shell"
+# 	if [ "$?" -ne 0 ]; then
+# 		reboot -f
+# 	fi
+# 	# Call original panic
+# 	. /scripts/functions
+# 	panic "$@"
+# }
+# 
+# # Override maybe_break from scripts/functions
+# maybe_break () {
+# 	# So we can close the network interface just before init exec-ed
+# 	if [ "init" = "$1" ]; then
+# 		if [ -n "$DEVICE" ]; then
+# 			ip address flush $DEVICE
+# 			ip link set $DEVICE down
+# 			DEVICE=""
+# 		fi
+# 		thupxeapi_serv=""
+# 	fi
+# 	
+# 	# And when debugging, we use the original painc instead ours
+# 	. /scripts/functions
+#         case ",${break?}," in
+#         *,$1,*)
+# 		panic "Spawning shell within the initramfs"
+#                 ;;
+# 	esac
+# }
+
+thupxe_mkpart_ready () {
+	local begin
+	local end
+	local size
+	local tol_size
+
+	# We override blkid here to make probing fstype always successful
+	blkid () {
+		command "blkid" "$@"
+		return 0
+	}
+	local_device_setup "$thupxeroot" "Partition Storing Pxe Data" true
+	# And we remove our hack here....
+	unset -f blkid
+	thupxedev="${DEV}"
+	tol_size="$(blockdev --getsz "${thupxedev}")"
+	
+	if [ "$(($tol_size))" -le 0 ]; then
+		panic "thupxe: Invaild Device ${thupxedev}, getsz=${tol_size} is zero"
+	fi
+
+	thupxeoff="$(numfmt --from=iec --to-unit=512 --format="%.0f" --delimiter=":" --field="-" --invalid=ignore "$thupxeoff")"
+	IFS=':' read begin size end << EOF
+$thupxeoff
+EOF
+	begin=$(( $begin ))
+        end=$(( $end ))
+        size=$(( $size ))
+	begin=$(( ($begin % $tol_size + $tol_size) % $tol_size ))	
+	end=$(( ($end % $tol_size + $tol_size) % $tol_size ))	
+	size=$(( $size ))
+
+	if [ "$begin" -eq 0 ]; then
+		if [ "$size" -ne 0 -a "$end" -ne 0 ]; then
+			begin=$(( $end - $size ))
+		fi
+	fi
+
+	if [ "$size" -eq 0 ]; then
+		if [ "$end" -ne 0 ]; then
+			size=$(( $end - $begin ))
+		else
+			size=$(( $tol_size - $begin ))
+		fi
+	fi
+
+	if [ "$(( $size + $begin ))" -gt "$tol_size" -o "$begin" -lt 0 -o "$size" -le 0 ]; then
+		panic "thupxe: Device ${thupxedev} of ${tol_size} size cannot hold a slice from begin=${begin} and size=${size}"
+	fi
+
+	dmsetup create thupxeroot --table "0 ${size} linear ${thupxedev} ${begin}" --noudevsync
+	dmsetup mknodes thupxeroot
+
+	if [ ! -e /dev/mapper/thupxeroot ]; then
+		panic "Cannot initialize device mapper"
+	fi
+	
+	thupxepart="/dev/mapper/thupxeroot"
+}
+
+thupxe_read_uuid () {
+	local guid="$(blkid --probe --output=value --match-tag PART_ENTRY_UUID "$thupxedev")"
+	thupxeuuid="$(echo "$guid" | tr -d '-' | fold -w 2 | tr '\n' ':' | sed -r 's/:+$//')"
+}
+
+thupxe_api_call () {
+	local url="${thupxeapi_serv}/$1"
+	local curlopt=""
+	if [ -n "$thupxemac_addr" ]; then
+		curlopt="${curlopt} --data-raw mac=${thupxemac_addr}"
+	fi
+	if [ -n "$thupxeuuid" ]; then
+		curlopt="${curlopt} --data-raw uuid=${thupxeuuid}"
+	fi
+	shift
+	curl --silent --show-error --location --connect-timeout 30 --fail --get $curlopt "$url" "$@"
+}
+
+
+thupxe_netconf () {
+	configure_networking
+	
+	if [ -z "${DEVICE}" ]; then
+		panic "thupxe: Network configuration failed"
+	fi
+
+	if [ -z "${thupxeapi_serv}" ]; then
+		case $ROOTPATH in 
+		http*)
+			thupxeapi_serv="${ROOTPATH}"
+			;;
+		esac
+	fi
+	if [ -z "${thupxeapi_serv}" ]; then
+	       thupxeapi_serv="http://${IPV4GATEWAY}"
+	fi
+	thupxemac_addr="$(cat "/sys/class/net/${DEVICE}/address")"
+}
+
+thupxe_fetch_img () {
+	local intf_speed
+	local cast_stage
+	local skip_rsync=""
+
+	cd /run/thupxe
+	. /run/thupxe/thupxe.conf
+	if [ "$USE_MULTICAST" = "true" ]; then
+		intf_speed="$(cat "/sys/class/net/${DEVICE}/speed")"
+		while true; do
+			cast_stage="$(thupxe_api_call "cast_stage?speed=${intf_speed}")"
+			if [ "$intf_speed" -eq "$cast_stage" ]; then
+				break;
+			fi
+			sleep 5
+		done
+		for dummy in $(seq 0 10); do
+			rm -f "storage/images.tar.gz"
+			udp-receiver --file "storage/images.tar.gz" --nokbd --nosync --nokbd --receive-timeout 20
+			if [ "$?" -eq "0" ]; then
+				mkdir -p "storage/images/"
+				tar -C "storage/images/" -xvz < "storage/images.tar.gz"
+				if [ "$?" -eq "0" ]; then
+					rm -f "storage/images.tar.gz"
+					skip_rsync=y
+					break
+				fi
+			fi
+		done
+	fi
+	if [ "$skip_rsync" != "y" ]; then
+		for dummy in $(seq 0 10); do
+			rsync -avHhPz --delay-updates --exclude "/version" "$RSYNC_ADDR" "storage/images/"
+			if [ "$?" -eq "0" ]; then
+				rsync -avHhPz --delay-updates --delete --delete-after "$RSYNC_ADDR" "storage/images/"
+				if [ "$?" -eq "0" ]; then
+					break
+				fi
+			fi
+		done
+	fi
+	sync
+	for dummy in $(seq 0 10); do
+		umount -f "storage"
+		if [ "$?" -eq 0 ]; then
+			sync
+			sync
+			reboot -f
+			panic "reboot failed"
+		fi
+	done
+	panic "umount failed"
+}
+
+thupxe_premount () {
+	local curr_ver=""
+	local remote_ver=""
+
+	mkdir -p /run/thupxe	
+	thupxe_mkpart_ready
+	thupxe_read_uuid
+	thupxe_netconf
+	thupxe_api_call "pxe.conf" > /run/thupxe/thupxe.conf
+	mkdir -p /run/thupxe/storage
+	mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
+	if [ "$?" -ne 0 ]; then
+		mkfs.ext4 -F "$thupxepart"
+		mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
+		if [ "$?" -ne 0 ]; then
+			panic "Error format storage partition"
+		fi
+	fi
+	mkdir -p /run/thupxe/storage/images /run/thupxe/storage/perm /run/thupxe/storage/work
+	rm -rf /run/thupxe/storage/perm.del
+	if [ -r "/run/thupxe/storage/images/version" ]; then
+		curr_ver="$(cat /run/thupxe/storage/images/version)"
+	fi
+	remote_ver="$(thupxe_api_call "images/version")"
+	if [ "$curr_ver" != "$remote_ver" ]; then
+		( thupxe_fetch_img )
+	else
+		sh /run/thupxe/thupxe.conf
+	fi
+}
+
+thupxe_mountimages () {
+	local images
+	local overlay
+	cd /run/thupxe
+	images="$(cat storage/images/series)"
+	overlay=""
+	for img in $images; do
+		mkdir -p "$img"
+		mount "storage/images/$img" "$img"
+		overlay="${overlay}:$img"
+	done
+	overlay="$(echo "$overlay" | sed 's/^://')"
+	mount -t overlay -olowerdir="$overlay",upperdir="storage/perm",workdir="storage/work" overlay "$rootmnt"	
+	for img in $images storage; do
+		umount -l "$img"
+		rmdir "$img"
+	done
+
+	mkdir -p /run/interfaces.d
+	cat > "/run/interfaces.d/$DEVICE" << EOF
+auto $DEVICE
+iface $DEVICE inet dhcp
+EOF
+	if [ -n "$thupxeuuid" ]; then
+		echo "client $thupxeuuid" >> "/run/interfaces.d/$DEVICE"
+	fi
+}
+
+
+thupxe_mountroot () {
+	( thupxe_mountimages )	
+}
+
+mount_top () {
+	thupxe_args
+	local_top
+}
+
+mount_premount () {
+	thupxe_premount
+}
+
+mountroot () {
+	thupxe_mountroot
+}
+
+mount_bottom () {
+	local_bottom
+}
+
+mountfs () {
+	:
+}
+
+# vim: set ft=sh:
