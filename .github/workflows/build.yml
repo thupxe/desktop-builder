@@ -468,7 +468,14 @@ jobs:
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
         with:
-          path: dist/
+          name: System Image
+          path: dist/images.tar.gz
+      - 
+        name: Upload Aritfacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Kernel
+          path: dist/kernel.tar.gz
   
   initramfs:
     runs-on: ubuntu-18.04
@@ -505,7 +512,7 @@ jobs:
       - name: Download Kernel modules and firmwares
         uses: actions/download-artifact@v2
         with:
-          name: kernel.tar.gz
+          name: Kernel
       - name: Build Docker image
         uses: docker/build-push-action@v2
         with:
