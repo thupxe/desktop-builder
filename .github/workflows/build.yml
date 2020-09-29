@@ -11,6 +11,8 @@ jobs:
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
     runs-on: ubuntu-18.04
+    outputs:
+      kerver: ${{ steps.cleanup.outputs.kerver }}
     
     steps:
       -
@@ -438,8 +440,15 @@ jobs:
           as-user chmod +x "/home/$USERNAME/Desktop/cppref.desktop"
       -
         name: Cleanup and Pack
+        id: cleanup
         run: |
           . /tmp/func
+          kerver=$(in-root linux-version list | linux-version sort --reverse | head -n 1)
+          if [ -z "$kerver" ]; then
+            echo "::error ::Kernel is not correctlly installed"
+            exit 1
+          fi
+          echo "::set-output name=kerver::${kerver}"
           in-root apt-get clean
           in-root apt-get check
           sudo umount rootfs/proc rootfs/sys
@@ -453,8 +462,8 @@ jobs:
           tar -f dist/images.tar --append --numeric-owner --owner root --group root -C images/ version
           tar -tvf dist/images.tar
           sudo rm -rf images/
-          gzip --no-name dist/images.tar 
-          sudo tar -f dist/kernel.tar.gz --create --gzip --numeric-owner -C rootfs/ boot/ lib/modules/
+          gzip --no-name dist/images.tar
+          sudo tar -f dist/kernel.tar.gz --create --gzip --numeric-owner -C rootfs/ $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") "lib/modules/${kerver}" "lib/firmware"
       - 
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
