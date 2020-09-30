@@ -481,12 +481,19 @@ jobs:
     runs-on: ubuntu-18.04
     needs:
       build
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
+        with:
+          driver-opts: network=host
       - name: Cache Docker layers
         uses: actions/cache@v2
         if: github.event_name == 'push'
@@ -518,15 +525,15 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          push: false
-          tags: thupxe-initramfs
+          push: true
+          tags: localhost:5000/thupxe-initramfs
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       - run: |
           mkdir -p product dist
           sudo docker run --rm --volume "${PWD}/product":/product \
-            --env KVER="${INPUT_kver?}" --interactive \
-            thupxe-initramfs bash --noprofile --norc -eo pipefail << 'EOF'
+            --env KVER="${kver?}" --interactive \
+            localhost:5000/thupxe-initramfs bash --noprofile --norc -eo pipefail << 'EOF'
             cd /product
             cp /boot/vmlinu[xz]-"${KVER?}" ./
             mkinitramfs -o "/product/initrd.img-${KVER?}" "${KVER?}"
@@ -535,6 +542,8 @@ jobs:
             ln -s "initrd.img-${KVER?}" initrd.img
           EOF
           tar -f dist/kernel.tar.gz --create --numeric-owner --owner root --group root -C product/ .
+        env:
+          kver: ${{ needs.build.outputs.kerver }}
       - uses: actions/upload-artifact@v2
         with:
           name: Kernel and Initramfs

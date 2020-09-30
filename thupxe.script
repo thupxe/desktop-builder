@@ -1,6 +1,6 @@
 # Assemble thupxe rootfs			-*- shell-script -*-
 
-thupxe_args() {
+thupxe_args () {
 	thupxeroot="PARTLABEL=thupxeroot"
 	thupxeapi_serv=""
 	thupxeoff="0:0:0"
@@ -23,40 +23,41 @@ thupxe_args() {
 	done
 }
 
-# panic () {
-# 	if [ -n "$thupxeapi_serv" ]; then
-# 		api_call "record_failure?mac=${mac_addr}&msg=$*"
-# 	fi
-# 	echo "Boot Failure: $@"
-# 	read -t 30 -p "Press Enter to a Rescue Shell"
-# 	if [ "$?" -ne 0 ]; then
-# 		reboot -f
-# 	fi
-# 	# Call original panic
-# 	. /scripts/functions
-# 	panic "$@"
-# }
-# 
-# # Override maybe_break from scripts/functions
-# maybe_break () {
-# 	# So we can close the network interface just before init exec-ed
-# 	if [ "init" = "$1" ]; then
-# 		if [ -n "$DEVICE" ]; then
-# 			ip address flush $DEVICE
-# 			ip link set $DEVICE down
-# 			DEVICE=""
-# 		fi
-# 		thupxeapi_serv=""
-# 	fi
-# 	
-# 	# And when debugging, we use the original painc instead ours
-# 	. /scripts/functions
-#         case ",${break?}," in
-#         *,$1,*)
-# 		panic "Spawning shell within the initramfs"
-#                 ;;
-# 	esac
-# }
+panic () {
+	if [ -n "$thupxeapi_serv" ]; then
+		thupxe_api_call "record_failure" --data-urlencode "msg=$*"
+	fi
+	echo "Boot Failure: $@"
+	read -t 30 -p "Press Enter to a Rescue Shell"
+	if [ "$?" -ne 0 ]; then
+		sync
+		reboot -f
+	fi
+	# Call original panic
+	(
+		. /scripts/functions
+		panic "$@"
+	)
+}
+
+# Override maybe_break from scripts/functions
+maybe_break () {
+	# So we can close the network interface just before init exec-ed
+	if [ "init" = "$1" ]; then
+		if [ -n "$DEVICE" ]; then
+			ip address flush $DEVICE
+			ip link set $DEVICE down
+			DEVICE=""
+		fi
+		thupxeapi_serv=""
+	fi
+	
+	# Call original maybe_break
+	(
+		. /scripts/functions
+		maybe_break "$@"
+	)
+}
 
 thupxe_mkpart_ready () {
 	local begin
@@ -84,8 +85,8 @@ thupxe_mkpart_ready () {
 $thupxeoff
 EOF
 	begin=$(( $begin ))
-        end=$(( $end ))
-        size=$(( $size ))
+	end=$(( $end ))
+	size=$(( $size ))
 	begin=$(( ($begin % $tol_size + $tol_size) % $tol_size ))	
 	end=$(( ($end % $tol_size + $tol_size) % $tol_size ))	
 	size=$(( $size ))
@@ -216,9 +217,9 @@ thupxe_premount () {
 	local remote_ver=""
 
 	mkdir -p /run/thupxe	
+	thupxe_netconf
 	thupxe_mkpart_ready
 	thupxe_read_uuid
-	thupxe_netconf
 	thupxe_api_call "pxe.conf" > /run/thupxe/thupxe.conf
 	mkdir -p /run/thupxe/storage
 	mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
