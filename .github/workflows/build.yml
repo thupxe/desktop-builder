@@ -522,3 +522,20 @@ jobs:
           tags: thupxe-initramfs
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      - run: |
+          mkdir -p product dist
+          sudo docker run --rm --volume "${PWD}/product":/product \
+            --env KVER="${INPUT_kver?}" --interactive \
+            thupxe-initramfs bash --noprofile --norc -eo pipefail << 'EOF'
+            cd /product
+            cp /boot/vmlinu[xz]-"${KVER?}" ./
+            mkinitramfs -o "/product/initrd.img-${KVER?}" "${KVER?}"
+            chmod 644 *
+            ln -s vmlinu[xz]-"${KVER?}" vmlinuz
+            ln -s "initrd.img-${KVER?}" initrd.img
+          EOF
+          tar -f dist/kernel.tar.gz --create --numeric-owner --owner root --group root -C product/ .
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Kernel and Initramfs
+          path: dist/kernel.tar.gz
