@@ -541,7 +541,7 @@ jobs:
             ln -s vmlinu[xz]-"${KVER?}" vmlinuz
             ln -s "initrd.img-${KVER?}" initrd.img
           EOF
-          tar -f dist/kernel.tar.gz --create --numeric-owner --owner root --group root -C product/ .
+          tar -f dist/kernel.tar.gz --create --gzip --numeric-owner --owner root --group root -C product/ .
         env:
           kver: ${{ needs.build.outputs.kerver }}
       - uses: actions/upload-artifact@v2
