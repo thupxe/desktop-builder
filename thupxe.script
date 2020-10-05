@@ -212,6 +212,21 @@ thupxe_fetch_img () {
 	panic "umount failed"
 }
 
+thupxe_loadconf () {
+	local success=0
+	for dummy in $(seq 0 10); do
+		thupxe_api_call "pxe.conf" > /run/thupxe/thupxe.conf
+		if [ "$?" -eq 0 ]; then
+			success=1
+			break
+		fi
+	done
+	if [ "$success" -eq 1 ]; then
+		return 0;
+	fi
+	panic "Cannot load thupxe.conf, check configuration"
+}
+
 thupxe_premount () {
 	local curr_ver=""
 	local remote_ver=""
@@ -220,7 +235,7 @@ thupxe_premount () {
 	thupxe_netconf
 	thupxe_mkpart_ready
 	thupxe_read_uuid
-	thupxe_api_call "pxe.conf" > /run/thupxe/thupxe.conf
+	thupxe_loadconf
 	mkdir -p /run/thupxe/storage
 	mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
 	if [ "$?" -ne 0 ]; then
@@ -239,7 +254,7 @@ thupxe_premount () {
 	if [ "$curr_ver" != "$remote_ver" ]; then
 		( thupxe_fetch_img )
 	else
-		sh /run/thupxe/thupxe.conf
+		( . /run/thupxe/thupxe.conf )
 	fi
 }
 
