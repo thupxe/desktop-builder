@@ -90,7 +90,7 @@ jobs:
           mkdir -p /tmp/.debuildcache/
           mkdir -p /tmp/.debuildtar/
           if [ -f /tmp/.debuildtar/rootfs.tar ]; then
-            if sudo tar -C rootfs/ -xf /tmp/.debuildtar/rootfs.tar; then
+            if sudo tar -C rootfs/ --checkpoint=1000 -xf /tmp/.debuildtar/rootfs.tar; then
               exit 0
             else
               sudo rm -rf rootfs/
@@ -173,7 +173,7 @@ jobs:
         run: |
           sudo umount rootfs/.debuildcache rootfs/sys rootfs/proc
           sudo rmdir rootfs/.debuildcache
-          sudo tar -C rootfs/ --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
+          sudo tar -C rootfs/ --checkpoint=1000 --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
           for i in sys proc; do
             sudo mount --bind /$i rootfs/$i
           done
@@ -458,12 +458,11 @@ jobs:
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
-          tar -f dist/images.tar --create --numeric-owner --owner root --group root -C images/ --exclude=version .
-          tar -f dist/images.tar --append --numeric-owner --owner root --group root -C images/ version
-          tar -tvf dist/images.tar
+          tar -f dist/images.tar --create --checkpoint=1000 --numeric-owner --owner root --group root -C images/ --exclude=version .
+          tar -f dist/images.tar --append --checkpoint=1000 --numeric-owner --owner root --group root -C images/ version
           sudo rm -rf images/
           gzip --no-name dist/images.tar
-          sudo tar -f dist/kernel.tar.gz --create --gzip --numeric-owner -C rootfs/ $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") "lib/modules/${kerver}" "lib/firmware"
+          sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip --numeric-owner -C rootfs/ $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") "lib/modules/${kerver}" "lib/firmware"
       - 
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
