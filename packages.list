@@ -25,13 +25,10 @@ fcitx-table
 fcitx-table-wubi
 fcitx-ui-classic
 firefox-locale-zh-hans
-chromium-browser
-chromium-browser-l10n
 fonts-arphic-ukai
 fonts-arphic-uming
 fonts-noto-cjk
 fonts-noto-cjk-extra
-libqt4-xmlpatterns
 libqt5quickwidgets5
 qml-module-qtquick2
 language-pack-zh-hans-base
@@ -43,8 +40,6 @@ fcitx-config-common
 exfat-fuse
 exfat-utils
 fonts-firacode
-qt-at-spi
-fcitx-frontend-qt4
 fcitx-frontend-qt5
 fcitx-frontend-all
 fcitx-frontend-gtk3

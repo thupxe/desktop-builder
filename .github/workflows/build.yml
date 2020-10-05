@@ -7,7 +7,7 @@ jobs:
   build:
     env:
       BUILD_MIRROR: "http://archive.ubuntu.com/ubuntu"
-      SUIT: "bionic"
+      SUIT: "focal"
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
     runs-on: ubuntu-18.04
@@ -373,22 +373,21 @@ jobs:
           as-user-mkdir "Desktop"
           for i in \
             code.desktop \
-            emacs25.desktop \
+            emacs.desktop \
             firefox.desktop \
-            gedit.desktop \
+            org.gnome.gedit.desktop \
             gnome-language-selector.desktop \
-            gnome-terminal.desktop \
+            org.gnome.Terminal.desktop \
             gvim.desktop \
             org.gnome.Calculator.desktop \
             sublime_text.desktop \
             eclipse.desktop \
-            goldendict.desktop \
-            chromium-browser.desktop
+            goldendict.desktop
           do 
             as-user cp "/usr/share/applications/$i" "/home/$USERNAME/Desktop/$i"
             as-user chmod +x "/home/$USERNAME/Desktop/$i"
           done
-          as-user sed -i '/^OnlyShowIn/D' "/home/$USERNAME/Desktop/gnome-terminal.desktop"
+          as-user sed -i '/^OnlyShowIn/D' "/home/$USERNAME/Desktop/org.gnome.Terminal.desktop"
           
           as-user-put ".config/fcitx/profile" << EOF
           [Profile]
