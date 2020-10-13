@@ -164,7 +164,6 @@ thupxe_fetch_img () {
 	local skip_rsync=""
 
 	cd /run/thupxe
-	. /run/thupxe/thupxe.conf
 	if [ "$USE_MULTICAST" = "true" ]; then
 		intf_speed="$(cat "/sys/class/net/${DEVICE}/speed")"
 		while true; do
@@ -251,11 +250,17 @@ thupxe_premount () {
 		curr_ver="$(cat /run/thupxe/storage/images/version)"
 	fi
 	remote_ver="$(thupxe_api_call "images/version")"
-	if [ "$curr_ver" != "$remote_ver" ]; then
-		( thupxe_fetch_img )
-	else
-		( . /run/thupxe/thupxe.conf )
-	fi
+	(
+		. /run/thupxe/thupxe.conf
+		if [ "$curr_ver" != "$remote_ver" ]; then
+			thupxe_fetch_img
+		fi
+		
+		if [ "$ENABLE_USB" != "true" ]; then
+			mkdir -p /run/systemd/system/
+			ln -s /dev/null /run/systemd/system/udisks2.service
+		fi
+	)
 }
 
 thupxe_mountimages () {
