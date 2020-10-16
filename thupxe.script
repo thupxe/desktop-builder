@@ -80,7 +80,7 @@ thupxe_mkpart_ready () {
 		panic "thupxe: Invaild Device ${thupxedev}, getsz=${tol_size} is zero"
 	fi
 
-	thupxeoff="$(numfmt --from=iec --to-unit=512 --format="%.0f" --delimiter=":" --field="-" --invalid=ignore "$thupxeoff")"
+	thupxeoff="$(numfmt --from=iec --to-unit=512 --format="%.0f" --delimiter=":" --field="-" --invalid=ignore -- "$thupxeoff")"
 	IFS=':' read begin size end << EOF
 $thupxeoff
 EOF
