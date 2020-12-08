@@ -67,7 +67,7 @@ jobs:
             while read url; do
               if curl --head -sfL "${url}/dists/${SUIT}/InRelease" > /dev/null; then
                 echo "Found current mirror: ${url}" >&2
-                echo "::set-env name=BUILD_MIRROR::${url}"
+                echo "BUILD_MIRROR=${url}" >> $GITHUB_ENV
                 break;
               fi
             done
