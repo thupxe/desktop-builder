@@ -271,7 +271,7 @@ thupxe_mountimages () {
 	overlay=""
 	for img in $images; do
 		mkdir -p "$img"
-		mount "storage/images/$img" "$img"
+		mount -t squashfs "storage/images/$img" "$img"
 		overlay="${overlay}:$img"
 	done
 	overlay="$(echo "$overlay" | sed 's/^://')"
