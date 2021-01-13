@@ -189,9 +189,9 @@ thupxe_fetch_img () {
 	fi
 	if [ "$skip_rsync" != "y" ]; then
 		for dummy in $(seq 0 10); do
-			rsync -avHhPz --delay-updates --exclude "/version" "$RSYNC_ADDR" "storage/images/"
+			rsync -avHhP --delay-updates --exclude "/version" "$RSYNC_ADDR" "storage/images/"
 			if [ "$?" -eq "0" ]; then
-				rsync -avHhPz --delay-updates --delete --delete-after "$RSYNC_ADDR" "storage/images/"
+				rsync -avHhP --delay-updates --delete --delete-after "$RSYNC_ADDR" "storage/images/"
 				if [ "$?" -eq "0" ]; then
 					break
 				fi
