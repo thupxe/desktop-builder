@@ -457,13 +457,13 @@ jobs:
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
-          tar -f dist/images.tar.gz --create --checkpoint=1000 --gzip \
+          tar --create --checkpoint=1000 --gzip \
             --numeric-owner --owner root --group root \
             --no-recursion -C images/ --null --files-from <(
             cd images/
             find . -not -name "version" -print0
             echo -ne "version\0"
-          )
+          ) | split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.gz.
           sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip \
             --numeric-owner -C rootfs/ \
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
@@ -473,7 +473,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: System Image
-          path: dist/images.tar.gz
+          path: dist/images.tar.gz.*
       - 
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
