@@ -59,3 +59,5 @@ p7zip-full
 cppreference-doc-en-html
 udisks2
 gvfs
+xserver-xorg-video-fbdev
+xserver-xorg-video-vesa
