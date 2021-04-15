@@ -74,9 +74,27 @@ thupxe_mkpart_ready () {
 		command "blkid" "$@"
 		return 0
 	}
-	local_device_setup "$thupxeroot" "Partition Storing Pxe Data" true
+
+	local rootdev
+	local rootdev_succ
+	rootdev_succ=0
+	while read -d ';' rootdev; do
+		local_device_setup "$rootdev" "Partition Storing Pxe Data" false
+		if [ "$?" -eq 0 ]; then
+			rootdev_succ=1
+			break;
+		fi
+	done << EOF
+${thupxeroot};
+EOF
+
 	# And we remove our hack here....
 	unset -f blkid
+
+	if [ "$rootdev_succ" -eq 0 ]; then
+		panic "ALERT! None of ${thupxeroot} exists. Dropping to a shell!"
+	fi
+
 	thupxedev="${DEV}"
 	tol_size="$(blockdev --getsz "${thupxedev}")"
 	
