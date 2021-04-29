@@ -166,7 +166,17 @@ jobs:
           in-root systemctl mask systemd-networkd
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y install code sublime-text
           sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock
-          
+
+      -
+        name: Install additional fonts
+        run: |
+          . /tmp/func
+          curl -L "https://download.jetbrains.com/fonts/JetBrainsMono-2.225.zip" -o jetbrains-mono.zip
+          mkdir jetbrains-mono
+          sudo unzip jetbrains-mono.zip -d jetbrains-mono
+          sudo mv jetbrains-mono/fonts/ttf rootfs/usr/share/fonts/truetype/jetbrains-mono
+          in-root fc-cache -fv
+
       -
         name: Make cache for built system
         if: steps.rootfscache.outputs.cache-hit != 'true'
@@ -356,7 +366,7 @@ jobs:
             as-user code --install-extension "/$i"
             sudo rm -f "rootfs/$i"
           done
-        
+
       -
         name: Setup User settings
         run: |
@@ -407,7 +417,7 @@ jobs:
           
           as-user-put ".config/Code/User/settings.json" << EOF
           {
-                "editor.fontFamily": "'Fira Code', 'Ubuntu Mono', Consolas, 'Courier New', monospace",
+                "editor.fontFamily": "'JetBrains Mono', 'Fira Code', 'Ubuntu Mono', Consolas, 'Courier New', monospace",
                 "editor.fontLigatures": false
           }
           EOF
