@@ -10,7 +10,7 @@ jobs:
       SUIT: "bionic"
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     outputs:
       kerver: ${{ steps.cleanup.outputs.kerver }}
     
