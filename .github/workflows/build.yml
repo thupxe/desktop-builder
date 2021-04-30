@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       kerver: ${{ steps.cleanup.outputs.kerver }}
-    
+
     steps:
       -
         name: Checkout
@@ -58,7 +58,7 @@ jobs:
 
       - name: Find out current mirror in the build environment
         continue-on-error: true
-        run: | 
+        run: |
           if [ "$(lsb_release -i -s )" != "Ubuntu" ]; then
             exit 0;
           fi
@@ -82,8 +82,8 @@ jobs:
           sudo rm /etc/apt/sources.list.d/focal.list
           sudo apt-get update
           sudo apt-get install libxml2-utils jq squashfs-tools
-          
-      - 
+
+      -
         name: Debootstrap
         run: |
           sudo mkdir -p rootfs/
@@ -104,7 +104,7 @@ jobs:
             --exclude=ubuntu-minimal,nplan,netplan.io,isc-dhcp-client,isc-dhcp-common \
             --include=gnupg \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
-      - 
+      -
         name: Bind mount proc, sys
         run: |
           for i in sys proc; do
@@ -121,7 +121,7 @@ jobs:
             sudo chroot rootfs sudo -H -u "$USERNAME" "$@"
           }
           EOF
-      - 
+      -
         name: Post install configuration
         run: |
           . /tmp/func
@@ -132,7 +132,7 @@ jobs:
           tzdata	tzdata/Zones/Asia	select	Shanghai
           EOF
           in-root rm -f "/etc/locale.gen"
-          in-root ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime 
+          in-root ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
           sudo mkdir -p rootfs/var/lib/locales/supported.d/
           echo "zh_CN.UTF-8 UTF-8" | sudo tee rootfs/var/lib/locales/supported.d/zh-hans  > /dev/null
           in-root dpkg-reconfigure --frontend noninteractive locales < /dev/null
@@ -187,7 +187,7 @@ jobs:
           for i in sys proc; do
             sudo mount --bind /$i rootfs/$i
           done
-      - 
+      -
         name: Install the latest Eclipse
         run: |
           version="$(curl -sfL https://download.eclipse.org/technology/epp/downloads/release/release.xml |
@@ -230,7 +230,7 @@ jobs:
           in-root systemctl mask dhcpcd
       -
         name: Generate Access List
-        env: 
+        env:
           ALLOW_IPS: ${{ secrets.ALLOW_IPS }}
         run: |
           sudo tee rootfs/etc/iptables/rules.v4 << EOF
@@ -246,7 +246,7 @@ jobs:
             fi
           done
           echo "COMMIT" | sudo tee -a rootfs/etc/iptables/rules.v4
-          
+
           sudo tee rootfs/etc/iptables/rules.v6 << EOF
           *filter
           :INPUT ACCEPT [0:0]
@@ -258,7 +258,7 @@ jobs:
           -A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 136 -j ACCEPT
           COMMIT
           EOF
-          
+
       -
         name: Setup public keys for root
         env:
@@ -310,7 +310,7 @@ jobs:
           fi
           in-root useradd -m -s /bin/bash "$USERNAME"
           echo "${USERNAME}:${PASSWD}" | in-root chpasswd
-      
+
       - name: Shall we output changed files?
         id: debug_output
         env:
@@ -336,8 +336,8 @@ jobs:
             sudo stat "rootfs/$i" || true
             sudo cat "rootfs/$i" || true
           done
-            
-        
+
+
 
       -
         name: Configure dictionary
@@ -345,16 +345,16 @@ jobs:
           sudo mkdir -p rootfs/usr/local/share/goldendict
           sudo ln -sf /usr/share/goldendict-wordnet rootfs/usr/local/share/goldendict/goldendict-wordnet
           curl -Lsf "http://download.huzheng.org/zh_CN/stardict-oxford-gb-formated-2.4.2.tar.bz2" | sudo tar -C rootfs/usr/local/share/goldendict/ -xvj
-      
+
       -
-        name: Install vscode extensions 
+        name: Install vscode extensions
         run: |
           . /tmp/func
           download_release(){
             local repo_name="$1"
             local asset_name="$2"
             local output_name="$3"
-            
+
             local down_url="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.assets[] | select (.name == "'"$asset_name"'") | [.][0].browser_download_url')"
             echo "Downloading $down_url"
             curl -sfL "$down_url" > "$output_name"
@@ -393,34 +393,34 @@ jobs:
             sublime_text.desktop \
             eclipse.desktop \
             goldendict.desktop
-          do 
+          do
             as-user cp "/usr/share/applications/$i" "/home/$USERNAME/Desktop/$i"
             as-user chmod +x "/home/$USERNAME/Desktop/$i"
           done
           as-user sed -i '/^OnlyShowIn/D' "/home/$USERNAME/Desktop/org.gnome.Terminal.desktop"
-          
+
           as-user-put ".config/fcitx/profile" << EOF
           [Profile]
           IMName=sunpinyin
           EnabledIMList=fcitx-keyboard-us:True,sunpinyin:True,pinyin:True,shuangpin:True,wubi:True
           EOF
-          
+
           as-user-put ".config/xfce4/helpers.rc" << EOF
           TerminalEmulator=gnome-terminal
-          
+
           EOF
-          
+
           as-user-put ".xinputrc" << EOF
           run_im fcitx
           EOF
-          
+
           as-user-put ".config/Code/User/settings.json" << EOF
           {
                 "editor.fontFamily": "'JetBrains Mono', 'Fira Code', 'Ubuntu Mono', Consolas, 'Courier New', monospace",
                 "editor.fontLigatures": false
           }
           EOF
-          
+
           as-user-put ".goldendict/config" << EOF
           <config>
            <paths>
@@ -428,7 +428,7 @@ jobs:
            </paths>
           </config>
           EOF
-          
+
           as-user-put ".config/mimeapps.list" << EOF
           [Default Applications]
           application/pdf=firefox.desktop
@@ -436,7 +436,7 @@ jobs:
           [Added Associations]
           application/pdf=firefox.desktop;
           EOF
-          
+
           as-user-put "Desktop/cppref.desktop" << EOF
           [Desktop Entry]
           Version=1.0
@@ -478,19 +478,19 @@ jobs:
             --numeric-owner -C rootfs/ \
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
             "lib/modules/${kerver}" "lib/firmware"
-      - 
+      -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
         with:
           name: System Image
           path: dist/images.tar.gz.*
-      - 
+      -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
         with:
           name: Kernel
           path: dist/kernel.tar.gz
-  
+
   initramfs:
     runs-on: ubuntu-18.04
     needs:
@@ -503,7 +503,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         with:
