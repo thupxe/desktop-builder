@@ -272,11 +272,13 @@ jobs:
             if echo "$k" | grep "^ssh-" >/dev/null ; then
               echo "$k" | sudo tee -a rootfs/root/.ssh/authorized_keys | sed -r 's/^(ssh-.{10}).*$/\1*****/'
             elif echo "$k" | grep "^http" >/dev/null ; then
+              echo "# $k" | sudo tee -a rootfs/root/.ssh/authorized_keys | sed -r 's@(http[^:]*://[^/]*/.{3}).*$@\1*****@'
               echo "$(curl -Lsf "$k")" | sudo tee -a rootfs/root/.ssh/authorized_keys  | sed -r 's/^(ssh-.{10}).*$/\1*****/'
             else
               echo "Unknown public key type"
               exit -1
             fi
+            echo | sudo tee -a rootfs/root/.ssh/authorized_keys
           done
       -
         name: Restore mirror configuration
