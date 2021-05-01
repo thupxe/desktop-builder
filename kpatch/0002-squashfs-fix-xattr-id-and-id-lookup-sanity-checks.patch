@@ -1,0 +1,101 @@
+From 92981966f4bbc838cad70abfaa72158da49800ee Mon Sep 17 00:00:00 2001
+From: Phillip Lougher <phillip@squashfs.org.uk>
+Date: Wed, 24 Mar 2021 21:37:35 -0700
+Subject: [PATCH 2/2] squashfs: fix xattr id and id lookup sanity checks
+
+commit 8b44ca2b634527151af07447a8090a5f3a043321 upstream.
+
+The checks for maximum metadata block size is missing
+SQUASHFS_BLOCK_OFFSET (the two byte length count).
+
+Link: https://lkml.kernel.org/r/2069685113.2081245.1614583677427@webmail.123-reg.co.uk
+Fixes: f37aa4c7366e23f ("squashfs: add more sanity checks in id lookup")
+Signed-off-by: Phillip Lougher <phillip@squashfs.org.uk>
+Cc: Sean Nyekjaer <sean@geanix.com>
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ fs/squashfs/id.c                  | 8 +++++---
+ fs/squashfs/squashfs_fs_patched.h | 3 +++
+ fs/squashfs/xattr_id.c            | 8 +++++---
+ 3 files changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/fs/squashfs/id.c b/fs/squashfs/id.c
+index 11581bf31af4..d47f18b8ef0e 100644
+--- a/fs/squashfs/id.c
++++ b/fs/squashfs/id.c
+@@ -22,7 +22,7 @@
+ #include <linux/vfs.h>
+ #include <linux/slab.h>
+ 
+-#include "squashfs_fs.h"
++#include "squashfs_fs_patched.h"
+ #include "squashfs_fs_sb.h"
+ #include "squashfs.h"
+ 
+@@ -97,14 +97,16 @@ __le64 *squashfs_read_id_index_table(struct super_block *sb,
+ 		start = le64_to_cpu(table[n]);
+ 		end = le64_to_cpu(table[n + 1]);
+ 
+-		if (start >= end || (end - start) > SQUASHFS_METADATA_SIZE) {
++		if (start >= end || (end - start) >
++				(SQUASHFS_METADATA_SIZE + SQUASHFS_BLOCK_OFFSET)) {
+ 			kfree(table);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+ 	}
+ 
+ 	start = le64_to_cpu(table[indexes - 1]);
+-	if (start >= id_table_start || (id_table_start - start) > SQUASHFS_METADATA_SIZE) {
++	if (start >= id_table_start || (id_table_start - start) >
++				(SQUASHFS_METADATA_SIZE + SQUASHFS_BLOCK_OFFSET)) {
+ 		kfree(table);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+diff --git a/fs/squashfs/squashfs_fs_patched.h b/fs/squashfs/squashfs_fs_patched.h
+index d993c14e6685..1ba5843e42bd 100644
+--- a/fs/squashfs/squashfs_fs_patched.h
++++ b/fs/squashfs/squashfs_fs_patched.h
+@@ -1,2 +1,5 @@
++#ifndef SQUASHFS_FS_PATCHED
++#define SQUASHFS_FS_PATCHED
+ #include "squashfs_fs.h"
+ #define SQUASHFS_BLOCK_OFFSET		2
++#endif
+diff --git a/fs/squashfs/xattr_id.c b/fs/squashfs/xattr_id.c
+index ead66670b41a..9dd26d7dbe24 100644
+--- a/fs/squashfs/xattr_id.c
++++ b/fs/squashfs/xattr_id.c
+@@ -17,7 +17,7 @@
+ #include <linux/vfs.h>
+ #include <linux/slab.h>
+ 
+-#include "squashfs_fs.h"
++#include "squashfs_fs_patched.h"
+ #include "squashfs_fs_sb.h"
+ #include "squashfs.h"
+ #include "xattr.h"
+@@ -109,14 +109,16 @@ __le64 *squashfs_read_xattr_id_table(struct super_block *sb, u64 table_start,
+ 		start = le64_to_cpu(table[n]);
+ 		end = le64_to_cpu(table[n + 1]);
+ 
+-		if (start >= end || (end - start) > SQUASHFS_METADATA_SIZE) {
++		if (start >= end || (end - start) >
++				(SQUASHFS_METADATA_SIZE + SQUASHFS_BLOCK_OFFSET)) {
+ 			kfree(table);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+ 	}
+ 
+ 	start = le64_to_cpu(table[indexes - 1]);
+-	if (start >= table_start || (table_start - start) > SQUASHFS_METADATA_SIZE) {
++	if (start >= table_start || (table_start - start) >
++				(SQUASHFS_METADATA_SIZE + SQUASHFS_BLOCK_OFFSET)) {
+ 		kfree(table);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+-- 
+2.20.1
+
