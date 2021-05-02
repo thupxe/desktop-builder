@@ -576,21 +576,34 @@ jobs:
         run: |
           mkdir -p product initramfs dist
           cp kpatch/*.patch kpatch/*.series product/
-          sudo docker run --rm \
+          sudo docker run --name kpatch \
             --volume "${PWD}/product":/product \
-            --volume "/tmp/kpatch/kpatch-home":/root \
-            --env KVER="${kver?}" --interactive \
+            --volume "/tmp/kpatch/kpatch-home":"/home/$(id --user --name)" \
+            --env KVER="${kver?}" --env USER="$(id --user --name)" \
+            --env UID="$(id --user)" --env GID="$(id --group)" --interactive \
             localhost:5000/thupxe-kpatch bash --noprofile --norc -eo pipefail << 'EOF'
-            cd /product
-            apt-get --no-install-recommends install -y linux-image-${KVER?} linux-image-${KVER?}-dbgsym
+            groupadd --gid "${GID?}" "${USER?}"
+            useradd --home-dir "/home/${USER}" --gid "${GID?}" --uid "${UID?}" --shell \
+             "$(which bash)" "${USER?}"
+            apt-get --no-install-recommends install -y "linux-image-${KVER?}" "linux-image-${KVER?}-dbgsym"
+          EOF
+          sudo docker start kpatch
+          sudo docker exec --interactive --user "$(id --user):$(id --group)" \
+            --workdir /product \
+            kpatch bash --noprofile --norc -eo pipefail << 'EOF'
             for i in *.series; do
               kpatch_name=${i%.series}
-              kpatch-build --target vmlinux --name "${kpatch_name}" -a "${KVER?}" \
-                $(cat "$i")
+              if ! kpatch-build --target vmlinux --name "${kpatch_name}" \
+                -a "${KVER?}" $(cat "$i"); then
+                cat "${HOME}/.kpatch/build.log"
+                exit 1
+              fi
               echo "Built ${kpatch_name}.ko"
               modinfo "${kpatch_name}.ko"
             done
           EOF
+          sudo docker kill kpatch
+          sudo docker rm kpatch
           mkdir -p "initramfs/lib/modules/${kver}/kpatch/"
           cp product/*.ko "initramfs/lib/modules/${kver}/kpatch/"
           mkdir -p "initramfs/conf/conf.d/"
