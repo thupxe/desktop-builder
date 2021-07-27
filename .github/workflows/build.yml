@@ -503,7 +503,8 @@ jobs:
     - id: patchNeeded
       run: |
         if [ "$(echo "${kver?}" | cut -d'-' -f 1)" = "5.4.0" ]; then
-          if [ "$(echo "${kver?}" | cut -d'-' -f 2)" -ge "71" ]; then
+          patchver="$(echo "${kver?}" | cut -d'-' -f 2)"
+          if [ "$patchver" -ge "71" -a "$patchver" -lt "74" ]; then
             echo "Squashfs Patch Needed!"
             echo "::set-output name=needPatch::true"
             exit 0;
