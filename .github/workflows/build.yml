@@ -149,16 +149,20 @@ jobs:
         name: Install additional softwares
         run: |
           . /tmp/func
+          sudo mkdir -p rootfs/.debuildcache
+          sudo mount --bind /tmp/.debuildcache rootfs/.debuildcache
+
+          in-root apt-get update
+          in-root apt-get -oDir::Cache::Archives=/.debuildcache -y dist-upgrade
+
           curl -fsL "https://download.sublimetext.com/sublimehq-pub.gpg" | in-root apt-key add -
           curl -fsL "https://packages.microsoft.com/keys/microsoft.asc" | in-root apt-key add -
           echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee rootfs/etc/apt/sources.list.d/sublime-text.list
           echo "deb https://packages.microsoft.com/repos/vscode stable main" | sudo tee rootfs/etc/apt/sources.list.d/vscode.list
-          sudo mkdir -p rootfs/.debuildcache
-          sudo mount --bind /tmp/.debuildcache rootfs/.debuildcache
+
           in-root apt-get update
           in-root apt-get -oDir::Cache::Archives=/.debuildcache --no-install-recommends -y install $(cat packages_can.list)
           in-root apt-get purge -y network-manager netplan.io snap snapd apport
-          in-root apt-get -oDir::Cache::Archives=/.debuildcache -y dist-upgrade
           in-root systemctl mask systemd-networkd
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y install code sublime-text
           sudo rm -rf /tmp/.debuildcache/partial /tmp/.debuildcache/lock
