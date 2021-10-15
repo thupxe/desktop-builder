@@ -485,17 +485,26 @@ jobs:
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
             "lib/modules/${kerver}" "lib/firmware"
       -
+        name: Calculate Artifact Checksums
+        run: |
+          sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
+          sha512sum dist/images.tar.gz.* | tee dist/images.tar.gz.sha512
+      -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
         with:
           name: System Image
-          path: dist/images.tar.gz.*
+          path: |
+            dist/images.tar.gz.sha512
+            dist/images.tar.gz.*
       -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v2
         with:
           name: Kernel
-          path: dist/kernel.tar.gz
+          path: |
+            dist/kernel.tar.gz.sha512
+            dist/kernel.tar.gz
 
   kpatchNeeded:
     runs-on: ubuntu-20.04
@@ -710,7 +719,12 @@ jobs:
           tar -f dist/kernel.tar.gz --create --gzip --numeric-owner --owner root --group root -C product/ .
         env:
           kver: ${{ needs.build.outputs.kerver }}
+      - name: Calculate artifact checksums
+        run: |
+          sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
       - uses: actions/upload-artifact@v2
         with:
           name: Kernel and Initramfs
-          path: dist/kernel.tar.gz
+          path: |
+            dist/kernel.tar.gz.sha512
+            dist/kernel.tar.gz
