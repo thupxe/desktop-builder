@@ -1,5 +1,12 @@
 # Assemble thupxe rootfs			-*- shell-script -*-
 
+# Supported kernel command lines for this initramfs script:
+# thupxeapi: mandatory, URL of thupxe API server (e.g. http://10.37.0.1), no default value
+# thupxeroot: optional, local storage device (e.g. /dev/sda1, PARTUUID=foo, PARTLABEL=bar), default to 'PARTLEBL=thupxeroot'
+# thupxeoff: optional, offset of device to use in format start:size:end (e.g. -25G:20G:0), default to '0:0:0' (whole device)
+# thupxeformat：optional, whether to format partition if no valid EXT4 fs is detected (* | no | force), no means raising error, force means skipping detection, default to ''
+# thupxeclear: optional, whether to clear local permanent storage on reboot (* | yes), default to ''
+
 thupxe_args () {
 	thupxeroot="PARTLABEL=thupxeroot"
 	thupxeapi_serv=""
@@ -8,6 +15,7 @@ thupxe_args () {
 	thupxepart=""
 	thupxeuuid=""
 	thupxeformat=""
+	thupxeclear=""
 	
 	for x in $(cat /proc/cmdline); do
 		case $x in
@@ -22,6 +30,9 @@ thupxe_args () {
 			;;
 		thupxeformat=*)
 			thupxeformat=${x#thupxeformat=}
+			;;
+		thupxeclear=*)
+			thupxeclear=${x#thupxeclear=}
 			;;
 		esac
 	done
@@ -258,7 +269,11 @@ thupxe_premount () {
 	thupxe_read_uuid
 	thupxe_loadconf
 	mkdir -p /run/thupxe/storage
-	mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
+	if [ "$thupxeformat" != "force" ]; then
+		mount -o rw -t ext4 "$thupxepart" "/run/thupxe/storage"
+	else
+		false
+	fi
 	if [ "$?" -ne 0 ]; then
 		if [ "$thupxeformat" != "no" ]; then
 			mkfs.ext4 -F "$thupxepart"
@@ -269,6 +284,9 @@ thupxe_premount () {
 		else
 			panic "No valid ext4 filesystem found"
 		fi
+	fi
+	if [ "$thupxeclear" == "yes" ]; then
+		rm -rf /run/thupxe/storage/perm
 	fi
 	mkdir -p /run/thupxe/storage/images /run/thupxe/storage/perm /run/thupxe/storage/work
 	rm -rf /run/thupxe/storage/perm.del
