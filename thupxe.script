@@ -1,10 +1,12 @@
 # Assemble thupxe rootfs			-*- shell-script -*-
 
 # Supported kernel command lines for this initramfs script:
-# thupxeapi: mandatory, URL of thupxe API server (e.g. http://10.37.0.1), no default value
+# thupxeapi: optional, URL of thupxe API server (e.g. http://10.37.0.1). When omitted, the following values will be used, if available:
+#   - Root path option (option 17) assigned by dhcp server, if begins with ``http";
+#   - Gateway assigned by dhcp server, i.e. http://{{ gateway_ip }}.
 # thupxeroot: optional, local storage device (e.g. /dev/sda1, PARTUUID=foo, PARTLABEL=bar), default to 'PARTLEBL=thupxeroot'
 # thupxeoff: optional, offset of device to use in format start:size:end (e.g. -25G:20G:0), default to '0:0:0' (whole device)
-# thupxeformat：optional, whether to format partition if no valid EXT4 fs is detected (* | no | force), no means raising error, force means skipping detection, default to ''
+# thupxeformat：optional, whether to format partition if no valid EXT4 fs is detected (* | no | force), no means never formatting and raising an error, force means always formating, default to ''
 # thupxeclear: optional, whether to clear local permanent storage on reboot (* | yes), default to ''
 
 thupxe_args () {
@@ -16,7 +18,7 @@ thupxe_args () {
 	thupxeuuid=""
 	thupxeformat=""
 	thupxeclear=""
-	
+
 	for x in $(cat /proc/cmdline); do
 		case $x in
 		thupxeroot=*)
@@ -66,7 +68,7 @@ maybe_break () {
 		fi
 		thupxeapi_serv=""
 	fi
-	
+
 	# Call original maybe_break
 	(
 		. /scripts/functions
@@ -108,7 +110,7 @@ EOF
 
 	thupxedev="${DEV}"
 	tol_size="$(blockdev --getsz "${thupxedev}")"
-	
+
 	if [ "$(($tol_size))" -le 0 ]; then
 		panic "thupxe: Invaild Device ${thupxedev}, getsz=${tol_size} is zero"
 	fi
@@ -120,8 +122,8 @@ EOF
 	begin=$(( $begin ))
 	end=$(( $end ))
 	size=$(( $size ))
-	begin=$(( ($begin % $tol_size + $tol_size) % $tol_size ))	
-	end=$(( ($end % $tol_size + $tol_size) % $tol_size ))	
+	begin=$(( ($begin % $tol_size + $tol_size) % $tol_size ))
+	end=$(( ($end % $tol_size + $tol_size) % $tol_size ))
 	size=$(( $size ))
 
 	if [ "$begin" -eq 0 ]; then
@@ -148,7 +150,7 @@ EOF
 	if [ ! -e /dev/mapper/thupxeroot ]; then
 		panic "Cannot initialize device mapper"
 	fi
-	
+
 	thupxepart="/dev/mapper/thupxeroot"
 }
 
@@ -173,13 +175,13 @@ thupxe_api_call () {
 
 thupxe_netconf () {
 	configure_networking
-	
+
 	if [ -z "${DEVICE}" ]; then
 		panic "thupxe: Network configuration failed"
 	fi
 
 	if [ -z "${thupxeapi_serv}" ]; then
-		case $ROOTPATH in 
+		case $ROOTPATH in
 		http*)
 			thupxeapi_serv="${ROOTPATH}"
 			;;
@@ -263,7 +265,7 @@ thupxe_premount () {
 	local curr_ver=""
 	local remote_ver=""
 
-	mkdir -p /run/thupxe	
+	mkdir -p /run/thupxe
 	thupxe_netconf
 	thupxe_mkpart_ready
 	thupxe_read_uuid
@@ -299,7 +301,7 @@ thupxe_premount () {
 		if [ "$curr_ver" != "$remote_ver" ]; then
 			thupxe_fetch_img
 		fi
-		
+
 		if [ "$ENABLE_USB" != "true" ]; then
 			mkdir -p /run/systemd/system/
 			ln -s /dev/null /run/systemd/system/udisks2.service
@@ -319,7 +321,7 @@ thupxe_mountimages () {
 		overlay="${overlay}:$img"
 	done
 	overlay="$(echo "$overlay" | sed 's/^://')"
-	mount -t overlay -olowerdir="$overlay",upperdir="storage/perm",workdir="storage/work" overlay "$rootmnt"	
+	mount -t overlay -olowerdir="$overlay",upperdir="storage/perm",workdir="storage/work" overlay "$rootmnt"
 	for img in $images storage; do
 		umount -l "$img"
 		rmdir "$img"
@@ -337,7 +339,7 @@ EOF
 
 
 thupxe_mountroot () {
-	( thupxe_mountimages )	
+	( thupxe_mountimages )
 }
 
 mount_top () {
