@@ -382,7 +382,7 @@ jobs:
             fi
             echo "Downloading ${url}"
             curl -sfL "https://marketplace.visualstudio.com/items?itemName=${publisher}.${package}" -c "$cookiejar" > /dev/null
-            curl -sfL "$url" -b "$cookiejar" > "$output_name"
+            curl -sfL --compressed "$url" -b "$cookiejar" > "$output_name"
             rm -f "$cookiejar"
           }
           download_fromstore "microsoft/vscode-cpptools" "ms-vscode" "cpptools" "cpptools-linux.vsix" "linux-x64"
