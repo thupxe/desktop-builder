@@ -466,10 +466,11 @@ jobs:
           echo "::set-output name=kerver::${kerver}"
           in-root apt-get clean
           in-root apt-get check
+          mkdir -p images/ dist/
+          in-root dpkg-query --show --showformat '${Package}\t${Version}/${Architecture}\n' >dist/manifest
           sudo umount rootfs/proc rootfs/sys
           sudo umount rootfs/.debuildcache || true
           sudo rmdir rootfs/.debuildcache || true
-          mkdir -p images/ dist/
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
@@ -505,6 +506,13 @@ jobs:
           path: |
             dist/kernel.tar.gz.sha512
             dist/kernel.tar.gz
+      -
+        name: Upload Aritfacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Manifest
+          path: |
+            dist/manifest
 
   kpatchNeeded:
     runs-on: ubuntu-20.04
