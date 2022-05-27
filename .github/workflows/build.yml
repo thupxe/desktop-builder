@@ -160,7 +160,7 @@ jobs:
           echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee rootfs/etc/apt/sources.list.d/sublime-text.list
           echo "deb https://packages.microsoft.com/repos/vscode stable main" | sudo tee rootfs/etc/apt/sources.list.d/vscode.list
 
-          in-root add-apt-repository ppa:mozillateam/ppa
+          echo "deb https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu ${SUIT} main" | sudo tee rootfs/etc/apt/sources.list.d/firefox-ppa.list
           sudo tee rootfs/etc/apt/preferences.d/firefox-no-snap << EOF
           Package: firefox*
           Pin: release o=Ubuntu*
