@@ -419,7 +419,7 @@ jobs:
             org.gnome.Calculator.desktop \
             sublime_text.desktop \
             eclipse.desktop \
-            goldendict.desktop
+            org.goldendict.GoldenDict.desktop
           do
             as-user cp "/usr/share/applications/$i" "/home/$USERNAME/Desktop/$i"
             as-user chmod +x "/home/$USERNAME/Desktop/$i"
