@@ -160,6 +160,7 @@ jobs:
           echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee rootfs/etc/apt/sources.list.d/sublime-text.list
           echo "deb https://packages.microsoft.com/repos/vscode stable main" | sudo tee rootfs/etc/apt/sources.list.d/vscode.list
 
+          curl -fsL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0ab215679c571d1c8325275b9bdb3d89ce49ec21" | in-root apt-key add -
           echo "deb https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu ${SUIT} main" | sudo tee rootfs/etc/apt/sources.list.d/firefox-ppa.list
           sudo tee rootfs/etc/apt/preferences.d/firefox-no-snap << EOF
           Package: firefox*
