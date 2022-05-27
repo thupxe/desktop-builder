@@ -4,8 +4,8 @@ ARG mirror=http://deb.debian.org/debian
 
 RUN echo "deb $mirror bullseye main contrib non-free" > /etc/apt/sources.list && \
         echo "deb $mirror bullseye-backports main contrib non-free" >> /etc/apt/sources.list && \
-        echo "deb $mirror bullesye-updates main contrib non-free" >> /etc/apt/sources.list && \
-	echo "deb http://security.debian.org/debian-security buster-security main" >> /etc/apt/sources.list
+        echo "deb $mirror bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
+	echo "deb http://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y wget curl rsync jq fdisk gdisk \
