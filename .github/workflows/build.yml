@@ -7,10 +7,10 @@ jobs:
   build:
     env:
       BUILD_MIRROR: "http://archive.ubuntu.com/ubuntu"
-      SUIT: "focal"
+      SUIT: "jammy"
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       kerver: ${{ steps.cleanup.outputs.kerver }}
 
@@ -160,6 +160,13 @@ jobs:
           echo "deb https://download.sublimetext.com/ apt/stable/" | sudo tee rootfs/etc/apt/sources.list.d/sublime-text.list
           echo "deb https://packages.microsoft.com/repos/vscode stable main" | sudo tee rootfs/etc/apt/sources.list.d/vscode.list
 
+          in-root add-apt-repository ppa:mozillateam/ppa
+          sudo tee rootfs/etc/apt/preferences.d/firefox-no-snap << EOF
+          Package: firefox*
+          Pin: release o=Ubuntu*
+          Pin-Priority: -1
+          EOF
+
           in-root apt-get update
           in-root apt-get -oDir::Cache::Archives=/.debuildcache --no-install-recommends -y install $(cat packages_can.list)
           in-root apt-get purge -y network-manager netplan.io snap snapd apport
@@ -179,19 +186,6 @@ jobs:
           done
 
       -
-        name: Install additional fonts
-        run: |
-          . /tmp/func
-          echo "deb ${BUILD_MIRROR} hirsute main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/hirsute.list
-          sudo apt-get update
-          apt-get download fonts-jetbrains-mono/hirsute
-          sudo rm /etc/apt/sources.list.d/hirsute.list
-          sudo apt-get update
-          sudo mv fonts-jetbrains-mono_*.deb rootfs/tmp/fonts-jetbrains-mono.deb
-          in-root apt-get install --no-install-recommends -y /tmp/fonts-jetbrains-mono.deb
-          sudo rm rootfs/tmp/fonts-jetbrains-mono.deb
-
-      -
         name: Install the latest Eclipse
         run: |
           version="$(curl -sfL https://download.eclipse.org/technology/epp/downloads/release/release.xml |
@@ -209,6 +203,7 @@ jobs:
           Categories=Development;IDE;Java;
           EOF
           sudo chmod 644 rootfs/usr/share/applications/eclipse.desktop
+
       -
         name: System configuration
         run: |
@@ -372,7 +367,11 @@ jobs:
             local output_name="$4"
             local platform="$5"
 
-            local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name')"
+            if [ "$repo_name" = "use_latest" ]; then
+              local version="latest" # might not be stable version
+            else
+              local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name')"
+            fi
             local cookiejar="$(mktemp)"
             
             echo "Found ${publisher}.${package}: ${version}"
@@ -386,7 +385,8 @@ jobs:
             rm -f "$cookiejar"
           }
           download_fromstore "microsoft/vscode-cpptools" "ms-vscode" "cpptools" "cpptools-linux.vsix" "linux-x64"
-          download_release "microsoft/vscode-python" "ms-python-release.vsix" "ms-python-release.vsix"
+          download_fromstore "microsoft/vscode-python" "ms-python" "python" "ms-python.vsix"
+          download_fromstore "use_latest" "vscjava" "vscode-java-pack" "vscode-java-pack.vsix"
           for i in *.vsix; do
             sudo mv "$i" rootfs/
             as-user code --install-extension "/$i"
@@ -535,7 +535,7 @@ jobs:
             dist/manifest
 
   kpatchNeeded:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       needPatch: ${{ steps.patchNeeded.outputs.needPatch }}
     needs:
@@ -556,7 +556,7 @@ jobs:
         kver: ${{ needs.build.outputs.kerver }}
 
   kpatch:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs:
     - build
     - kpatchNeeded
@@ -668,7 +668,7 @@ jobs:
           path: dist/kpatch.img
 
   initramfs:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     needs:
     - build
     - kpatch

@@ -5,14 +5,12 @@ build-essential
 linux-image-generic
 vim
 emacs
-python
 python3
-openjdk-11-jdk
+openjdk-17-jdk
 curl
 git
 gedit
 vim-gtk
-firefox
 gimp
 gnome-calculator
 openssh-server
@@ -24,7 +22,7 @@ resolvconf
 fcitx-table
 fcitx-table-wubi
 fcitx-ui-classic
-firefox-locale-zh-hans
+firefox
 fonts-arphic-ukai
 fonts-arphic-uming
 fonts-noto-cjk
@@ -40,6 +38,7 @@ fcitx-config-common
 exfat-fuse
 exfat-utils
 fonts-firacode
+fonts-jetbrains-mono
 fcitx-frontend-qt5
 fcitx-frontend-all
 fcitx-frontend-gtk3
@@ -61,3 +60,4 @@ udisks2
 gvfs
 xserver-xorg-video-fbdev
 xserver-xorg-video-vesa
+ntfs-3g
