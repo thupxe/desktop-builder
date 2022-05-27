@@ -36,7 +36,7 @@ fcitx-sunpinyin
 fcitx-module-cloudpinyin
 fcitx-config-common
 exfat-fuse
-exfat-utils
+exfatprogs
 fonts-firacode
 fonts-jetbrains-mono
 fcitx-frontend-qt5
