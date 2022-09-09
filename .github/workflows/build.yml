@@ -191,6 +191,7 @@ jobs:
         run: |
           version="$(curl -sfL https://download.eclipse.org/technology/epp/downloads/release/release.xml |
                        xmllint --xpath "/packages/present[1]/text()" -)"
+          version="2022-06/R" # hardcode a currently available version
           echo "Found Eclipse version: ${version}"
           curl -fsL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/${version}/eclipse-java-$(echo "$version" | tr '/' '-')-linux-gtk-x86_64.tar.gz&r=1" | sudo tar -C rootfs/opt -xz
           sudo tee rootfs/usr/share/applications/eclipse.desktop << EOF
