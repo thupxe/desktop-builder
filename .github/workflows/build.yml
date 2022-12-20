@@ -17,10 +17,10 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: Cache Deb Packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'push'
         with:
           path: /tmp/.debuildcache
@@ -29,7 +29,7 @@ jobs:
             ${{ runner.os }}-debs-
       -
         name: Cache Deb Packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'pull_request'
         with:
           path: /tmp/.debuildcache
@@ -50,7 +50,7 @@ jobs:
           sed -r 's/^[ \t]+//; s/[ \t]+$//; /^#/d;' packages.list | sort | uniq > packages_can.list
 
       - name: Cache Debootstrap Result
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: rootfscache
         with:
           path: /tmp/.debuildtar
@@ -318,7 +318,7 @@ jobs:
         env:
           DBG: ${{ secrets.debug_output }}
         run: |
-          echo "::set-output name=debug::${DBG}"
+          echo "debug=${DBG}" >> $GITHUB_OUTPUT
       -
         name: See Changed Files
         if: steps.debug_output.outputs.debug == 'true'
@@ -484,7 +484,7 @@ jobs:
             echo "::error ::Kernel is not correctlly installed"
             exit 1
           fi
-          echo "::set-output name=kerver::${kerver}"
+          echo "kerver=${kerver}" >> $GITHUB_OUTPUT
           in-root apt-get clean
           in-root apt-get check
           mkdir -p images/ dist/
@@ -513,7 +513,7 @@ jobs:
           sha512sum dist/images.tar.gz.* | tee dist/images.tar.gz.sha512
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: System Image
           path: |
@@ -521,7 +521,7 @@ jobs:
             dist/images.tar.gz.*
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Kernel
           path: |
@@ -529,7 +529,7 @@ jobs:
             dist/kernel.tar.gz
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Manifest
           path: |
@@ -548,11 +548,11 @@ jobs:
           patchver="$(echo "${kver?}" | cut -d'-' -f 2)"
           if [ "$patchver" -ge "71" -a "$patchver" -lt "74" ]; then
             echo "Squashfs Patch Needed!"
-            echo "::set-output name=needPatch::true"
+            echo "needPatch=true" >> $GITHUB_OUTPUT
             exit 0;
           fi
         fi
-        echo "::set-output name=needPatch::false"
+        echo "needPatch=false">> $GITHUB_OUTPUT
       env:
         kver: ${{ needs.build.outputs.kerver }}
 
@@ -570,15 +570,15 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
         with:
           driver-opts: network=host
 
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'push'
         with:
           path: /tmp/kpatch
@@ -586,7 +586,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-kpatch-
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'pull_request'
         with:
           path: /tmp/kpatch
@@ -606,7 +606,7 @@ jobs:
           mkdir -p /tmp/kpatch/kpatch-home
 
       - name: Build Docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: kpatch
           file: kpatch/Dockerfile
@@ -663,7 +663,7 @@ jobs:
         env:
           kver: ${{ needs.build.outputs.kerver }}
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Kpatch
           path: dist/kpatch.img
@@ -681,14 +681,14 @@ jobs:
           - 5000:5000
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
         with:
           driver-opts: network=host
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'push'
         with:
           path: /tmp/.buildx-cache
@@ -696,7 +696,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         if: github.event_name == 'pull_request'
         with:
           path: /tmp/.buildx-cache
@@ -710,16 +710,16 @@ jobs:
           echo "I do not know how to setup cache"
           exit -1
       - name: Download Kernel modules and firmwares
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: Kernel
       - name: Download Kpatch
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         if: needs.kpatch.result == 'success'
         with:
           name: Kpatch
       - name: Build Docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: Dockerfile
@@ -751,7 +751,7 @@ jobs:
       - name: Calculate artifact checksums
         run: |
           sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Kernel and Initramfs
           path: |
