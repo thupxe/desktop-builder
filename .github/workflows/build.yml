@@ -374,7 +374,7 @@ jobs:
               local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name')"
             fi
             local cookiejar="$(mktemp)"
-            
+
             echo "Found ${publisher}.${package}: ${version}"
             local url="https://marketplace.visualstudio.com/_apis/public/gallery/publishers/${publisher}/vsextensions/${package}/${version}/vspackage"
             if [ -n "$platform" ]; then
@@ -493,6 +493,11 @@ jobs:
           sudo umount rootfs/.debuildcache || true
           sudo rmdir rootfs/.debuildcache || true
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
+          sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip \
+            --numeric-owner -C rootfs/ \
+            $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
+            "lib/modules/${kerver}" "lib/firmware"
+          sudo rm -rf rootfs/ || true
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
           tar --create --checkpoint=1000 --gzip \
@@ -502,10 +507,6 @@ jobs:
             find . -not -name "version" -print0
             echo -ne "version\0"
           ) | split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.gz.
-          sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip \
-            --numeric-owner -C rootfs/ \
-            $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
-            "lib/modules/${kerver}" "lib/firmware"
       -
         name: Calculate Artifact Checksums
         run: |
