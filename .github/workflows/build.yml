@@ -395,6 +395,16 @@ jobs:
           done
 
       -
+        name: Disable gnome-keyring service
+        run: |
+          . /tmp/func
+          in-root systemctl --global disable gnome-keyring
+          in-root systemctl --global mask gnome-keyring
+          in-root rm -f /usr/share/dbus-1/services/org.gnome.keyring.service
+          in-root rm -f /usr/share/dbus-1/services/org.freedesktop.secrets.service
+          in-root rm -f /usr/share/dbus-1/services/org.freedesktop.impl.portal.Secret.service
+
+      -
         name: Setup User settings
         run: |
           . /tmp/func
