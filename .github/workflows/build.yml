@@ -507,7 +507,7 @@ jobs:
           sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip \
             --numeric-owner -C rootfs/ \
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
-            "lib/modules/${kerver}" "lib/firmware"
+            "lib/modules/${kerver}" "lib/firmware" "boot/config-${kerver}"
           sudo rm -rf rootfs/ || true
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
