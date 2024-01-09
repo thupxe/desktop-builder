@@ -2,7 +2,7 @@ locales
 tzdata
 xubuntu-desktop
 build-essential
-linux-image-generic
+linux-image-generic-hwe-22.04
 vim
 emacs
 python3
