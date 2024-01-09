@@ -386,10 +386,11 @@ jobs:
             rm -f "$cookiejar"
           }
           download_fromstore "microsoft/vscode-cpptools" "ms-vscode" "cpptools" "cpptools-linux.vsix" "linux-x64"
-          download_fromstore "microsoft/vscode-python" "ms-python" "python" "ms-python.vsix"
+          download_fromstore "use_latest" "ms-python" "python" "ms-python.vsix"
           download_fromstore "use_latest" "vscjava" "vscode-java-pack" "vscode-java-pack.vsix"
           for i in *.vsix; do
             sudo mv "$i" rootfs/
+            echo "Installing VSCode extension $i..."
             as-user code --install-extension "/$i"
             sudo rm -f "rootfs/$i"
           done
