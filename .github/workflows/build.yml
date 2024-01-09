@@ -17,7 +17,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Cache Deb Packages
         uses: actions/cache@v3
@@ -525,7 +525,7 @@ jobs:
           sha512sum dist/images.tar.gz.* | tee dist/images.tar.gz.sha512
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: System Image
           path: |
@@ -533,7 +533,7 @@ jobs:
             dist/images.tar.gz.*
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Kernel
           path: |
@@ -541,14 +541,14 @@ jobs:
             dist/kernel.tar.gz
       -
         name: Upload Aritfacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Manifest
           path: |
             dist/manifest
 
   kpatchNeeded:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       needPatch: ${{ steps.patchNeeded.outputs.needPatch }}
     needs:
@@ -569,7 +569,7 @@ jobs:
         kver: ${{ needs.build.outputs.kerver }}
 
   kpatch:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - build
     - kpatchNeeded
@@ -582,7 +582,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -618,7 +618,7 @@ jobs:
           mkdir -p /tmp/kpatch/kpatch-home
 
       - name: Build Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: kpatch
           file: kpatch/Dockerfile
@@ -675,13 +675,13 @@ jobs:
         env:
           kver: ${{ needs.build.outputs.kerver }}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Kpatch
           path: dist/kpatch.img
 
   initramfs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs:
     - build
     - kpatch
@@ -693,10 +693,10 @@ jobs:
           - 5000:5000
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Cache Docker layers
@@ -722,16 +722,16 @@ jobs:
           echo "I do not know how to setup cache"
           exit -1
       - name: Download Kernel modules and firmwares
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Kernel
       - name: Download Kpatch
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         if: needs.kpatch.result == 'success'
         with:
           name: Kpatch
       - name: Build Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
@@ -739,7 +739,8 @@ jobs:
           tags: localhost:5000/thupxe-initramfs
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-      - run: |
+      - name: Build initrd image
+        run: |
           mkdir -p product dist
           if [ -e "kpatch.img" ]; then
             mv kpatch.img product/
@@ -763,7 +764,7 @@ jobs:
       - name: Calculate artifact checksums
         run: |
           sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Kernel and Initramfs
           path: |
