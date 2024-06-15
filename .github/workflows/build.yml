@@ -547,145 +547,10 @@ jobs:
           path: |
             dist/manifest
 
-  kpatchNeeded:
-    runs-on: ubuntu-latest
-    outputs:
-      needPatch: ${{ steps.patchNeeded.outputs.needPatch }}
-    needs:
-      build
-    steps:
-    - id: patchNeeded
-      run: |
-        if [ "$(echo "${kver?}" | cut -d'-' -f 1)" = "5.4.0" ]; then
-          patchver="$(echo "${kver?}" | cut -d'-' -f 2)"
-          if [ "$patchver" -ge "71" -a "$patchver" -lt "74" ]; then
-            echo "Squashfs Patch Needed!"
-            echo "needPatch=true" >> $GITHUB_OUTPUT
-            exit 0;
-          fi
-        fi
-        echo "needPatch=false">> $GITHUB_OUTPUT
-      env:
-        kver: ${{ needs.build.outputs.kerver }}
-
-  kpatch:
-    runs-on: ubuntu-latest
-    needs:
-    - build
-    - kpatchNeeded
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    if: needs.kpatchNeeded.outputs.needPatch == 'true'
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          driver-opts: network=host
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        if: github.event_name == 'push'
-        with:
-          path: /tmp/kpatch
-          key: ${{ runner.os }}-kpatch-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-kpatch-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        if: github.event_name == 'pull_request'
-        with:
-          path: /tmp/kpatch
-          key: ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-kpatch-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-kpatch-
-            ${{ runner.os }}-kpatch-
-      - name: Cache Docker layers
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: |
-          echo "I do not know how to setup cache"
-          exit -1
-
-      - name: Prepare cache directory
-        run: |
-          mkdir -p /tmp/kpatch/.buildx-cache
-          mkdir -p /tmp/kpatch/kpatch-home
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: kpatch
-          file: kpatch/Dockerfile
-          push: true
-          tags: localhost:5000/thupxe-kpatch
-          cache-from: type=local,src=/tmp/kpatch/.buildx-cache
-          cache-to: type=local,dest=/tmp/kpatch/.buildx-cache
-
-      - name: Build Kpatch
-        run: |
-          mkdir -p product initramfs dist
-          cp kpatch/*.patch kpatch/*.series product/
-          sudo docker run --name kpatch \
-            --volume "${PWD}/product":/product \
-            --volume "/tmp/kpatch/kpatch-home":"/home/$(id --user --name)" \
-            --env KVER="${kver?}" --env USER="$(id --user --name)" \
-            --env UID="$(id --user)" --env GID="$(id --group)" --interactive \
-            localhost:5000/thupxe-kpatch bash --noprofile --norc -eo pipefail << 'EOF'
-            groupadd --gid "${GID?}" "${USER?}"
-            useradd --home-dir "/home/${USER}" --gid "${GID?}" --uid "${UID?}" --shell \
-             "$(which bash)" "${USER?}"
-            apt-get --no-install-recommends install -y "linux-image-${KVER?}" "linux-image-${KVER?}-dbgsym"
-          EOF
-          sudo docker start kpatch
-          sudo docker exec --interactive --user "$(id --user):$(id --group)" \
-            --workdir /product \
-            kpatch bash --noprofile --norc -eo pipefail << 'EOF'
-            for i in *.series; do
-              kpatch_name=${i%.series}
-              if ! kpatch-build --target vmlinux --name "${kpatch_name}" \
-                -a "${KVER?}" $(cat "$i"); then
-                cat "${HOME}/.kpatch/build.log"
-                exit 1
-              fi
-              echo "Built ${kpatch_name}.ko"
-              modinfo "${kpatch_name}.ko"
-            done
-          EOF
-          sudo docker kill kpatch
-          sudo docker rm kpatch
-          mkdir -p "initramfs/lib/modules/${kver}/kpatch/"
-          cp product/*.ko "initramfs/lib/modules/${kver}/kpatch/"
-          mkdir -p "initramfs/conf/conf.d/"
-          cat > initramfs/conf/conf.d/thupxe_kpatch << 'EOF'
-            for i in /lib/modules/$(uname -r)/kpatch/*.ko; do
-              (exec -a insmod kmod "$i")
-            done
-          EOF
-          cd initramfs
-          cpio --null --create --format=newc --owner=+0:+0 < <(
-            find "lib/modules/${kver}/" -print0
-            find "conf/conf.d/" -print0
-          ) | gzip > ../dist/kpatch.img
-        env:
-          kver: ${{ needs.build.outputs.kerver }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Kpatch
-          path: dist/kpatch.img
-
   initramfs:
     runs-on: ubuntu-latest
     needs:
     - build
-    - kpatch
-    if: always() && needs.build.result == 'success' && needs.kpatch.result != 'failure'
     services:
       registry:
         image: registry:2
@@ -725,11 +590,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Kernel
-      - name: Download Kpatch
-        uses: actions/download-artifact@v4
-        if: needs.kpatch.result == 'success'
-        with:
-          name: Kpatch
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -742,9 +602,6 @@ jobs:
       - name: Build initrd image
         run: |
           mkdir -p product dist
-          if [ -e "kpatch.img" ]; then
-            mv kpatch.img product/
-          fi
           sudo docker run --rm --volume "${PWD}/product":/product \
             --env KVER="${kver?}" --interactive \
             localhost:5000/thupxe-initramfs bash --noprofile --norc -eo pipefail << 'EOF'
@@ -754,9 +611,6 @@ jobs:
             chmod 644 *
             ln -s vmlinu[xz]-"${KVER?}" vmlinuz
             ln -s "initrd.img-${KVER?}" initrd.img
-            if [ -e "kpatch.img" ]; then
-              cat kpatch.img >> initrd.img
-            fi
           EOF
           tar -f dist/kernel.tar.gz --create --gzip --numeric-owner --owner root --group root -C product/ .
         env:
