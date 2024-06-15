@@ -371,7 +371,7 @@ jobs:
             if [ "$repo_name" = "use_latest" ]; then
               local version="latest" # might not be stable version
             else
-              local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name')"
+              local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name' | sed 's/^v//')"
             fi
             local cookiejar="$(mktemp)"
 
@@ -386,8 +386,8 @@ jobs:
             rm -f "$cookiejar"
           }
           download_fromstore "microsoft/vscode-cpptools" "ms-vscode" "cpptools" "cpptools-linux.vsix" "linux-x64"
-          download_fromstore "use_latest" "ms-python" "python" "ms-python.vsix"
-          download_fromstore "use_latest" "vscjava" "vscode-java-pack" "vscode-java-pack.vsix"
+          download_fromstore "microsoft/vscode-python" "ms-python" "python" "ms-python.vsix"
+          download_fromstore "microsoft/vscode-java-pack" "vscjava" "vscode-java-pack" "vscode-java-pack.vsix"
           for i in *.vsix; do
             sudo mv "$i" rootfs/
             echo "Installing VSCode extension $i..."
