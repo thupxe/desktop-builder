@@ -504,41 +504,41 @@ jobs:
           sudo umount rootfs/.debuildcache || true
           sudo rmdir rootfs/.debuildcache || true
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
-          sudo tar -f dist/kernel.tar.gz --create --checkpoint=1000 --gzip \
+          sudo tar -f dist/kernel.tar.zstd --create --checkpoint=1000 --use-compress-program zstdmt \
             --numeric-owner -C rootfs/ \
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
             "lib/modules/${kerver}" "lib/firmware" "boot/config-${kerver}"
           sudo rm -rf rootfs/ || true
           echo "$GITHUB_SHA" > images/version
           echo "0000_clientsys.squash" > images/series
-          tar --create --checkpoint=1000 --gzip \
+          tar --create --checkpoint=1000 --use-compress-program zstdmt \
             --numeric-owner --owner root --group root \
             --no-recursion -C images/ --null --files-from <(
             cd images/
             find . -not -name "version" -print0
             echo -ne "version\0"
-          ) | split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.gz.
+          ) | split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.zstd.
       -
         name: Calculate Artifact Checksums
         run: |
-          sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
-          sha512sum dist/images.tar.gz.* | tee dist/images.tar.gz.sha512
+          sha512sum dist/kernel.tar.zstd | tee dist/kernel.tar.zstd.sha512
+          sha512sum dist/images.tar.zstd.* | tee dist/images.tar.zstd.sha512
       -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v4
         with:
           name: System Image
           path: |
-            dist/images.tar.gz.sha512
-            dist/images.tar.gz.*
+            dist/images.tar.zstd.sha512
+            dist/images.tar.zstd.*
       -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v4
         with:
           name: Kernel
           path: |
-            dist/kernel.tar.gz.sha512
-            dist/kernel.tar.gz
+            dist/kernel.tar.zstd.sha512
+            dist/kernel.tar.zstd
       -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v4
@@ -590,6 +590,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Kernel
+      - name: Uncompress Kernel
+        run: |
+          zstdmt -d kernel.tar.zstd
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -612,15 +615,15 @@ jobs:
             ln -s vmlinu[xz]-"${KVER?}" vmlinuz
             ln -s "initrd.img-${KVER?}" initrd.img
           EOF
-          tar -f dist/kernel.tar.gz --create --gzip --numeric-owner --owner root --group root -C product/ .
+          tar -f dist/kernel.tar.zstd --create --use-compress-program zstdmt --numeric-owner --owner root --group root -C product/ .
         env:
           kver: ${{ needs.build.outputs.kerver }}
       - name: Calculate artifact checksums
         run: |
-          sha512sum dist/kernel.tar.gz | tee dist/kernel.tar.gz.sha512
+          sha512sum dist/kernel.tar.zstd | tee dist/kernel.tar.zstd.sha512
       - uses: actions/upload-artifact@v4
         with:
           name: Kernel and Initramfs
           path: |
-            dist/kernel.tar.gz.sha512
-            dist/kernel.tar.gz
+            dist/kernel.tar.zstd.sha512
+            dist/kernel.tar.zstd

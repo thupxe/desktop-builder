@@ -18,6 +18,6 @@ RUN mkdir -p /lib/modules /target /mnt
 
 COPY thupxe.hook /usr/share/initramfs-tools/hooks/thupxe
 COPY thupxe.script /usr/share/initramfs-tools/scripts/thupxe
-ADD kernel.tar.gz /
+ADD kernel.tar /
 
 CMD /bin/bash
