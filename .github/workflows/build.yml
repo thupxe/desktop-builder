@@ -7,10 +7,10 @@ jobs:
   build:
     env:
       BUILD_MIRROR: "http://archive.ubuntu.com/ubuntu"
-      SUIT: "jammy"
+      SUIT: "noble"
       USERNAME: "user"
       PRODUCT_MIRROR: "http://mirrors.tuna.tsinghua.edu.cn/ubuntu"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       kerver: ${{ steps.cleanup.outputs.kerver }}
 
@@ -97,7 +97,7 @@ jobs:
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
             --components=main,universe,non-free \
-            --exclude=ubuntu-minimal,nplan,netplan.io,isc-dhcp-client,isc-dhcp-common \
+            --exclude=ubuntu-minimal,nplan,netplan.io,netplan-generator,isc-dhcp-client,isc-dhcp-common \
             --include=gnupg \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
       -
@@ -399,8 +399,8 @@ jobs:
         name: Disable gnome-keyring service
         run: |
           . /tmp/func
-          in-root systemctl --global disable gnome-keyring
-          in-root systemctl --global mask gnome-keyring
+          # in-root systemctl --global disable gnome-keyring
+          # in-root systemctl --global mask gnome-keyring
           in-root rm -f /usr/share/dbus-1/services/org.gnome.keyring.service
           in-root rm -f /usr/share/dbus-1/services/org.freedesktop.secrets.service
           in-root rm -f /usr/share/dbus-1/services/org.freedesktop.impl.portal.Secret.service

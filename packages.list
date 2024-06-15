@@ -2,7 +2,7 @@ locales
 tzdata
 xubuntu-desktop
 build-essential
-linux-image-generic-hwe-22.04
+linux-image-generic-hwe-24.04
 vim
 emacs
 python3
@@ -10,7 +10,7 @@ openjdk-17-jdk
 curl
 git
 gedit
-vim-gtk
+vim-gtk3
 gimp
 gnome-calculator
 openssh-server
