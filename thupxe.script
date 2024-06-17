@@ -209,13 +209,13 @@ thupxe_fetch_img () {
 			sleep 5
 		done
 		for dummy in $(seq 0 10); do
-			rm -f "storage/images.tar.gz"
-			udp-receiver --file "storage/images.tar.gz" --nokbd --nosync --nokbd --receive-timeout 20
+			rm -f "storage/images.tar.zstd"
+			udp-receiver --file "storage/images.tar.zstd" --nokbd --nosync --nokbd --receive-timeout 20
 			if [ "$?" -eq "0" ]; then
 				mkdir -p "storage/images/"
-				tar -C "storage/images/" -xvz < "storage/images.tar.gz"
+				zstdcat "storage/images.tar.zstd" | tar -C "storage/images/" -xv
 				if [ "$?" -eq "0" ]; then
-					rm -f "storage/images.tar.gz"
+					rm -f "storage/images.tar.zstd"
 					skip_rsync=y
 					break
 				fi
