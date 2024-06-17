@@ -521,8 +521,8 @@ jobs:
       -
         name: Calculate Artifact Checksums
         run: |
-          sha512sum dist/kernel.tar.zstd | tee dist/kernel.tar.zstd.sha512
-          sha512sum dist/images.tar.zstd.* | tee dist/images.tar.zstd.sha512
+          (cd dist/ && sha512sum kernel.tar.zstd) | tee dist/kernel.tar.zstd.sha512
+          (cd dist/ && sha512sum images.tar.zstd.*) | tee dist/images.tar.zstd.sha512
       -
         name: Upload Aritfacts
         uses: actions/upload-artifact@v4
@@ -620,7 +620,7 @@ jobs:
           kver: ${{ needs.build.outputs.kerver }}
       - name: Calculate artifact checksums
         run: |
-          sha512sum dist/kernel.tar.zstd | tee dist/kernel.tar.zstd.sha512
+          (cd dist/ && sha512sum kernel.tar.zstd) | tee dist/kernel.tar.zstd.sha512
       - uses: actions/upload-artifact@v4
         with:
           name: Kernel and Initramfs
