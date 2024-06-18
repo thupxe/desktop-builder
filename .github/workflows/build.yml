@@ -405,6 +405,10 @@ jobs:
           in-root rm -f /usr/share/dbus-1/services/org.freedesktop.secrets.service
           in-root rm -f /usr/share/dbus-1/services/org.freedesktop.impl.portal.Secret.service
 
+      - name: Fetch tool for gvfs metadata
+        run: |
+          wget "https://github.com/static-linux/static-binaries-i386/raw/4266c69/gvfs-1.16.2.tar.gz" -O /tmp/gvfs.tar.gz
+          tar -C /tmp --strip-components=1 -xvzf /tmp/gvfs.tar.gz --wildcards "gvfs-*/meta-set" "gvfs-*/meta-get"
       -
         name: Setup User settings
         run: |
@@ -498,6 +502,16 @@ jobs:
           Icon=help-contents
           EOF
           as-user chmod +x "/home/$USERNAME/Desktop/cppref.desktop"
+
+          mkdir -p /tmp/fakehome
+          as-user find "/home/$USERNAME/Desktop/" -type f -name "*.desktop" -print0 |
+          while read -d $'\0' file; do
+            env - HOME=/tmp/fakehome /tmp/meta-set -t root "$file" "xfce-exe-checksum" "$(as-user cat "$file" | sha256sum | cut -d ' ' -f 1)"
+          done
+          echo "Generated metadata:"
+          env - /tmp/meta-get -f /tmp/fakehome/.local/share/gvfs-metadata/root -r /
+          as-user-mkdir ".local/share/gvfs-metadata"
+          tar -C /tmp/fakehome/.local/share/gvfs-metadata -c . | as-user tar -C "/home/$USERNAME/.local/share/gvfs-metadata" -x
       -
         name: Cleanup and Pack
         id: cleanup
