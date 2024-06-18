@@ -437,10 +437,23 @@ jobs:
           done
           as-user sed -i '/^OnlyShowIn/D' "/home/$USERNAME/Desktop/org.gnome.Terminal.desktop"
 
-          as-user-put ".config/fcitx/profile" << EOF
-          [Profile]
-          IMName=sunpinyin
-          EnabledIMList=fcitx-keyboard-us:True,sunpinyin:True,pinyin:True,shuangpin:True,wubi:True
+          as-user-put ".config/fcitx5/profile" << EOF
+          [Groups/0]
+          Name=Default
+          Default Layout=us
+          DefaultIM=pinyin
+
+          [Groups/0/Items/0]
+          Name=keyboard-us
+
+          [Groups/0/Items/1]
+          Name=pinyin
+
+          [Groups/0/Items/2]
+          Name=wubi98-large
+
+          [GroupOrder]
+          0=Default
           EOF
 
           as-user-put ".config/xfce4/helpers.rc" << EOF
@@ -449,7 +462,7 @@ jobs:
           EOF
 
           as-user-put ".xinputrc" << EOF
-          run_im fcitx
+          run_im fcitx5
           EOF
 
           as-user-put ".config/Code/User/settings.json" << EOF
