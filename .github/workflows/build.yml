@@ -60,6 +60,15 @@ jobs:
       - name: Download source code
         run: |
           sudo docker exec gvfs-build apt-get source gvfs
+      - name: Cache Built Packages
+        uses: actions/cache@v3
+        id: debcache
+        with:
+          path: gvfs-dev-utils.deb
+          key: ${{ runner.os }}-gvfsdeb-${{ hashFiles('gvfs-debbuild/gvfs_*.dsc', 'gvfs-utils/**') }}
+      - name: Build gvfs-dev-utils
+        if: steps.debcache.outputs.cache-hit != 'true'
+        run: |
           debdir=$(echo gvfs-debbuild/gvfs-*/debian)
           cat gvfs-utils/control >> "$debdir/control.in"
           cp gvfs-utils/gvfs-dev-utils.install "$debdir/"
