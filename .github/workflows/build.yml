@@ -4,6 +4,80 @@ on:
   push:
 
 jobs:
+  gvfstool:
+    runs-on: ubuntu-24.04
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        if: github.event_name == 'push'
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-gvfs-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-gvfs-
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        if: github.event_name == 'pull_request'
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-gvfs-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-gvfs-
+            ${{ runner.os }}-gvfs-
+      - name: Cache Docker layers
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
+        run: |
+          echo "I do not know how to setup cache"
+          exit -1
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: gvfs-utils
+          file: gvfs-utils/Dockerfile
+          push: true
+          tags: localhost:5000/gvfs-build
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Start build environment
+        run: |
+          mkdir -p gvfs-debbuild
+          sudo docker run --rm --volume "${PWD}/gvfs-debbuild":/gvfs-debbuild \
+            --name gvfs-build --detach --workdir /gvfs-debbuild \
+            --user "$(id -u):$(id -g)" \
+            localhost:5000/gvfs-build sleep infinity
+      - name: Download source code
+        run: |
+          sudo docker exec gvfs-build apt-get source gvfs
+          debdir=$(echo gvfs-debbuild/gvfs-*/debian)
+          cat gvfs-utils/control >> "$debdir/control.in"
+          cp gvfs-utils/gvfs-dev-utils.install "$debdir/"
+          cp gvfs-utils/install-metadata-utils.patch "$debdir/patches/"
+          echo "install-metadata-utils.patch" >> "$debdir/patches/series"
+          echo "/usr/lib/*/gvfs/libgvfscommon.a" >> "$debdir/not-installed"
+          sed -i $'/-Dman=true/a\\\n\t\t-Ddevel_utils=true \\\\' "$debdir/rules"
+          sudo docker exec gvfs-build bash -c 'cd gvfs-*/debian/.. && dpkg-buildpackage -us -uc -Pnodoc'
+          mv gvfs-debbuild/gvfs-dev-utils_*.deb ./gvfs-dev-utils.deb
+      - name: Stop build environment
+        run: |
+          sudo docker stop gvfs-build
+      - name: Upload built package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gvfs-dev-utils.deb
+          path: gvfs-dev-utils.deb
+
   build:
     env:
       BUILD_MIRROR: "http://archive.ubuntu.com/ubuntu"
@@ -13,6 +87,8 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       kerver: ${{ steps.cleanup.outputs.kerver }}
+    needs:
+    - gvfstool
 
     steps:
       -
@@ -406,9 +482,14 @@ jobs:
           in-root rm -f /usr/share/dbus-1/services/org.freedesktop.impl.portal.Secret.service
 
       - name: Fetch tool for gvfs metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: gvfs-dev-utils.deb
+
+      - name: Install tool for gvfs metadata
         run: |
-          wget "https://github.com/static-linux/static-binaries-i386/raw/4266c69/gvfs-1.16.2.tar.gz" -O /tmp/gvfs.tar.gz
-          tar -C /tmp --strip-components=1 -xvzf /tmp/gvfs.tar.gz --wildcards "gvfs-*/meta-set" "gvfs-*/meta-get"
+          sudo apt-get install ./gvfs-dev-utils.deb
+
       -
         name: Setup User settings
         run: |
@@ -513,10 +594,10 @@ jobs:
           mkdir -p /tmp/fakehome
           as-user find "/home/$USERNAME/Desktop/" -type f -name "*.desktop" -print0 |
           while read -d $'\0' file; do
-            env - HOME=/tmp/fakehome /tmp/meta-set -t root "$file" "xfce-exe-checksum" "$(as-user cat "$file" | sha256sum | cut -d ' ' -f 1)"
+            env - HOME=/tmp/fakehome /usr/libexec/gvfs-metadata-utils/meta-set -t root "$file" "xfce-exe-checksum" "$(as-user cat "$file" | sha256sum | cut -d ' ' -f 1)"
           done
           echo "Generated metadata:"
-          env - /tmp/meta-get -f /tmp/fakehome/.local/share/gvfs-metadata/root -r /
+          env - /usr/libexec/gvfs-metadata-utils/meta-get -f /tmp/fakehome/.local/share/gvfs-metadata/root -r /
           as-user-mkdir ".local/share/gvfs-metadata"
           tar -C /tmp/fakehome/.local/share/gvfs-metadata -c . | as-user tar -C "/home/$USERNAME/.local/share/gvfs-metadata" -x
       -

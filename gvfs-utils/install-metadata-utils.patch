@@ -1,0 +1,104 @@
+Index: gvfs-1.50.3/common/meson.build
+===================================================================
+--- gvfs-1.50.3.orig/common/meson.build
++++ gvfs-1.50.3/common/meson.build
+@@ -30,7 +30,7 @@ deps = [
+ 
+ cflags = common_cflags + ['-DREMOTE_VOLUME_MONITORS_DIR="@0@"'.format(gvfs_prefix / gvfs_remote_volume_monitors_dir)]
+ 
+-libgvfscommon = shared_library(
++libgvfscommon = both_libraries(
+   'gvfscommon',
+   sources: sources + [dbus_sources],
+   include_directories: top_inc,
+@@ -44,7 +44,14 @@ libgvfscommon_dep = declare_dependency(
+   sources: dbus_sources[1],
+   include_directories: common_inc,
+   dependencies: deps,
+-  link_with: libgvfscommon,
++  link_with: libgvfscommon.get_shared_lib(),
++)
++
++libgvfscommon_a_dep = declare_dependency(
++  sources: dbus_sources[1],
++  include_directories: common_inc,
++  dependencies: deps,
++  link_with: libgvfscommon.get_static_lib(),
+ )
+ 
+ deps = [
+Index: gvfs-1.50.3/metadata/meson.build
+===================================================================
+--- gvfs-1.50.3.orig/metadata/meson.build
++++ gvfs-1.50.3/metadata/meson.build
+@@ -47,7 +47,6 @@ sources = files(
+ deps = [
+   gio_dep,
+   glib_dep,
+-  libgvfscommon_dep,
+ ]
+ 
+ cflags = [
+@@ -60,7 +59,16 @@ libmetadata = static_library(
+   'metadata',
+   sources: sources + [dbus_sources],
+   include_directories: top_inc,
+-  dependencies: deps + [gio_unix_dep],
++  dependencies: deps + [libgvfscommon_dep, gio_unix_dep],
++  c_args: cflags,
++  pic: true,
++)
++
++libmetadata_s = static_library(
++  'metadata_s',
++  sources: sources + [dbus_sources],
++  include_directories: top_inc,
++  dependencies: deps + [libgvfscommon_a_dep, gio_unix_dep],
+   c_args: cflags,
+   pic: true,
+ )
+@@ -68,10 +76,17 @@ libmetadata = static_library(
+ libmetadata_dep = declare_dependency(
+   sources: dbus_sources[1],
+   include_directories: '.',
+-  dependencies: deps,
++  dependencies: deps + [libgvfscommon_dep],
+   link_with: libmetadata,
+ )
+ 
++libmetadata_s_dep = declare_dependency(
++  sources: dbus_sources[1],
++  include_directories: '.',
++  dependencies: deps + [libgvfscommon_a_dep],
++  link_with: libmetadata_s,
++)
++
+ deps = [libmetadata_dep]
+ 
+ if enable_gudev
+@@ -102,8 +117,10 @@ if enable_devel_utils
+       app,
+       app + '.c',
+       include_directories: top_inc,
+-      dependencies: libmetadata_dep,
++      dependencies: libmetadata_s_dep,
+       c_args: cflags,
++      install: true,
++      install_dir: gvfs_libexecdir + '/gvfs-metadata-utils',
+     )
+   endforeach
+ 
+@@ -113,10 +130,12 @@ if enable_devel_utils
+       'metadata-nautilus.c',
+       include_directories: top_inc,
+       dependencies: [
+-        libmetadata_dep,
++        libmetadata_s_dep,
+         libxml_dep,
+       ],
+       c_args: cflags,
++      install: true,
++      install_dir: gvfs_libexecdir + '/gvfs-metadata-utils',
+     )
+   endif
+ endif

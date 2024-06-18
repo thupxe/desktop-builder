@@ -1,0 +1,9 @@
+
+Package: gvfs-dev-utils
+Architecture: any
+Multi-Arch: foreign
+Section: devel
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: userspace virtual filesystem - metadata manipulation tools
+  this package contains tools necessary for manipulating gvfs metadata 
+  files.
