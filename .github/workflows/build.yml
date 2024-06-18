@@ -454,10 +454,17 @@ jobs:
           Name=pinyin
 
           [Groups/0/Items/2]
+          Name=shuangpin
+
+          [Groups/0/Items/3]
           Name=wubi98-large
 
           [GroupOrder]
           0=Default
+          EOF
+
+          as-user-put ".config/fcitx5/conf/pinyin.conf" << EOF
+          ShuangpinProfile=Xiaohe
           EOF
 
           as-user-put ".config/xfce4/helpers.rc" << EOF
