@@ -460,7 +460,7 @@ jobs:
             if [ "$repo_name" = "use_latest" ]; then
               local version="latest" # might not be stable version
             else
-              local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.name' | sed 's/^v//')"
+              local version="$(curl -sfL "https://api.github.com/repos/${repo_name}/releases/latest" | jq -r '.tag_name' | sed 's/^v//')"
             fi
             local cookiejar="$(mktemp)"
 
