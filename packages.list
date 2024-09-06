@@ -20,6 +20,7 @@ ifupdown
 dhcpcd5
 resolvconf
 firefox
+firefox-l10n-zh-cn
 fonts-arphic-ukai
 fonts-arphic-uming
 fonts-noto-cjk
