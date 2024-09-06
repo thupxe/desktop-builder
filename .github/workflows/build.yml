@@ -162,7 +162,7 @@ jobs:
         name: Prepare build environment
         run: |
           sudo apt-get update
-          sudo apt-get install libxml2-utils jq squashfs-tools debootstrap
+          sudo apt-get install libxml2-utils jq squashfs-tools debootstrap eatmydata
 
       -
         name: Debootstrap
@@ -178,12 +178,12 @@ jobs:
               sudo mkdir -p rootfs/
             fi
           fi
-          sudo debootstrap \
+          sudo eatmydata debootstrap \
             --cache-dir=/tmp/.debuildcache \
             --merged-usr --arch=amd64 \
             --components=main,universe,non-free \
             --exclude=ubuntu-minimal,nplan,netplan.io,netplan-generator,isc-dhcp-client,isc-dhcp-common \
-            --include=gnupg \
+            --include=gnupg,eatmydata \
             "$SUIT" rootfs/ "$BUILD_MIRROR"
       -
         name: Bind mount proc, sys
@@ -196,10 +196,10 @@ jobs:
           cat > /tmp/func << 'EOF'
           export LANG=C
           in-root(){
-            sudo chroot rootfs "$@"
+            sudo chroot rootfs eatmydata "$@"
           }
           as-user(){
-            sudo chroot rootfs sudo -H -u "$USERNAME" "$@"
+            sudo chroot rootfs sudo -H -u "$USERNAME" eatmydata "$@"
           }
           EOF
       -
@@ -269,7 +269,7 @@ jobs:
         run: |
           sudo umount rootfs/.debuildcache rootfs/sys rootfs/proc
           sudo rmdir rootfs/.debuildcache
-          sudo tar -C rootfs/ --checkpoint=1000 --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . > /tmp/.debuildtar/rootfs.tar
+          sudo tar -C rootfs/ --checkpoint=1000 --sparse --selinux --acls --xattrs --create --one-file-system --numeric-owner . | eatmydata tee /tmp/.debuildtar/rootfs.tar > /dev/null
           for i in sys proc; do
             sudo mount --bind /$i rootfs/$i
           done
@@ -281,7 +281,7 @@ jobs:
                        xmllint --xpath "/packages/present[1]/text()" -)"
           echo "Found Eclipse version: ${version}"
           version="2024-06/R" # hardcode a currently available version
-          curl -fsL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/${version}/eclipse-java-$(echo "$version" | tr '/' '-')-linux-gtk-x86_64.tar.gz&r=1" | sudo tar -C rootfs/opt -xz
+          curl -fsL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/${version}/eclipse-java-$(echo "$version" | tr '/' '-')-linux-gtk-x86_64.tar.gz&r=1" | sudo eatmydata tar -C rootfs/opt -xz
           sudo tee rootfs/usr/share/applications/eclipse.desktop << EOF
           [Desktop Entry]
           Type=Application
@@ -632,7 +632,7 @@ jobs:
           sudo umount rootfs/.debuildcache || true
           sudo rmdir rootfs/.debuildcache || true
           sudo mksquashfs rootfs/ images/0000_clientsys.squash -noI -noD -noF -noX -noappend -e boot
-          sudo tar -f dist/kernel.tar.zstd --create --checkpoint=1000 --use-compress-program zstdmt \
+          sudo eatmydata tar -f dist/kernel.tar.zstd --create --checkpoint=1000 --use-compress-program zstdmt \
             --numeric-owner -C rootfs/ \
             $(sudo bash -c 'cd rootfs/; echo boot/vmlinu[xz]-"$0"' "$kerver") \
             "lib/modules/${kerver}" "lib/firmware" "boot/config-${kerver}"
@@ -645,7 +645,7 @@ jobs:
             cd images/
             find . -not -name "version" -print0
             echo -ne "version\0"
-          ) | split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.zstd.
+          ) | eatmydata split --bytes=1536m --numeric-suffixes=1 - dist/images.tar.zstd.
       -
         name: Calculate Artifact Checksums
         run: |
