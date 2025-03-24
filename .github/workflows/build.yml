@@ -258,6 +258,7 @@ jobs:
 
           in-root apt-get update
           in-root apt-get -oDir::Cache::Archives=/.debuildcache --no-install-recommends -y install $(cat packages_can.list)
+          in-root apt-get -oDir::Cache::Archives=/.debuildcache --no-install-recommends -y install xserver-xorg-video-nvidia-550 linux-modules-nvidia-550-generic-hwe-24.04
           in-root apt-get purge -y network-manager netplan.io snap snapd apport
           in-root systemctl mask systemd-networkd
           in-root apt-get -oDir::Cache::Archives=/.debuildcache -y install code sublime-text
